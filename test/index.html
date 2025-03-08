@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Proto Test</title>
+</head>
+<body>
+    <h1>WebSocket Proto Test Page</h1>
+    <p>Open Chrome DevTools and check the "WebSocket Proto" panel to see the messages.</p>
+    <div id="status">Connecting...</div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:5000');
+        const statusDiv = document.getElementById('status');
+
+        ws.onopen = () => {
+            statusDiv.textContent = 'Connected to WebSocket server';
+            statusDiv.style.color = 'green';
+        };
+
+        ws.onclose = () => {
+            statusDiv.textContent = 'Disconnected from WebSocket server';
+            statusDiv.style.color = 'red';
+        };
+
+        ws.onerror = (error) => {
+            statusDiv.textContent = 'WebSocket error: ' + error.message;
+            statusDiv.style.color = 'red';
+        };
+    </script>
+</body>
+</html>

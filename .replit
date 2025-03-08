@@ -1,0 +1,19 @@
+modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[deployment]
+run = ["sh", "-c", "npx http-server . -p 5000"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80

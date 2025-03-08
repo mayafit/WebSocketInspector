@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "WebSocket Proto Debugger",
+  "version": "1.0",
+  "description": "Debug WebSocket data streams with Protocol Buffer message support",
+  "permissions": [
+    "debugger",
+    "webRequest",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "devtools_page": "devtools.html"
+}
