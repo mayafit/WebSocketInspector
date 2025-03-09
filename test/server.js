@@ -37,7 +37,7 @@ async function startMessageBroadcast(TestMessage) {
 
         // Create a new message
         const protoMessage = TestMessage.create(message);
-        
+
         // Encode the message
         const buffer = TestMessage.encode(protoMessage).finish();
 
@@ -45,6 +45,7 @@ async function startMessageBroadcast(TestMessage) {
         wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(buffer);
+                console.log('Sent message:', message);
             }
         });
 
@@ -55,7 +56,28 @@ async function startMessageBroadcast(TestMessage) {
 // Initialize the server
 wss.on('connection', (ws) => {
     console.log('Client connected');
-    ws.on('close', () => console.log('Client disconnected'));
+
+    ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+    });
+
+    ws.on('close', () => {
+        console.log('Client disconnected');
+    });
+
+    ws.on('message', (data) => {
+        console.log('Received message from client:', data);
+    });
+});
+
+// Log when server starts listening
+wss.on('listening', () => {
+    console.log('WebSocket server is listening on port 5000');
+});
+
+// Handle server errors
+wss.on('error', (error) => {
+    console.error('WebSocket server error:', error);
 });
 
 // Start the server

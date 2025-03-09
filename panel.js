@@ -5,6 +5,11 @@ class WebSocketDebugger {
         this.selectedMessageType = null;
         console.log('WebSocket Debugger initialized');
 
+        if (typeof protobuf === 'undefined') {
+            console.error('Protobuf library not loaded');
+            throw new Error('Protobuf library not loaded');
+        }
+
         this.initializeUI();
         this.setupWebSocketListener();
     }
@@ -38,9 +43,20 @@ class WebSocketDebugger {
 
     async loadProtoFile(file) {
         try {
+            if (typeof protobuf === 'undefined') {
+                throw new Error('Protobuf library not loaded. Please refresh the page.');
+            }
+
             const content = await file.text();
             console.log('Proto file content loaded, parsing...');
-            this.protoRoot = await protobuf.parse(content).root;
+
+            // Use the global protobuf object
+            const parsed = await protobuf.parse(content);
+            if (!parsed || !parsed.root) {
+                throw new Error('Failed to parse proto file: Invalid format');
+            }
+
+            this.protoRoot = parsed.root;
 
             // Populate message type selector
             this.populateMessageTypes(this.protoRoot);
@@ -203,6 +219,12 @@ class WebSocketDebugger {
 
 // Initialize the debugger when the panel loads
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Panel DOM loaded, initializing WebSocket Debugger');
+    console.log('Panel DOM loaded, checking protobuf availability');
+    if (typeof protobuf === 'undefined') {
+        console.error('Protobuf library not available');
+        document.getElementById('messageDetail').textContent = 'Error: Protobuf library not loaded. Please refresh the page.';
+        return;
+    }
+    console.log('Initializing WebSocket Debugger');
     new WebSocketDebugger();
 });
