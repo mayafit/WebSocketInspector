@@ -9,22 +9,26 @@
     <div id="status">Connecting...</div>
 
     <script>
+        // Explicitly connect to the test WebSocket server on port 5000
         const ws = new WebSocket('ws://localhost:5000');
         const statusDiv = document.getElementById('status');
 
         ws.onopen = () => {
             statusDiv.textContent = 'Connected to WebSocket server';
             statusDiv.style.color = 'green';
+            console.log('WebSocket connection established');
         };
 
         ws.onclose = () => {
             statusDiv.textContent = 'Disconnected from WebSocket server';
             statusDiv.style.color = 'red';
+            console.log('WebSocket connection closed');
         };
 
         ws.onerror = (error) => {
             statusDiv.textContent = 'WebSocket error: ' + error.message;
             statusDiv.style.color = 'red';
+            console.error('WebSocket error:', error);
         };
     </script>
 </body>
