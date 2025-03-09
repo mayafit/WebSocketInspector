@@ -11,7 +11,7 @@
         <div class="proto-config">
             <div class="proto-upload">
                 <input type="file" id="protoFile" accept=".proto" />
-                <button id="loadProto">Load Proto File</button>
+                <button id="loadProto" type="button">Load Proto File</button>
             </div>
             <div class="message-type-selector">
                 <select id="messageTypeSelect" disabled>
@@ -33,42 +33,38 @@
         </div>
     </div>
     <script>
-        // Log protobuf availability immediately
-        console.log('Initial protobuf check:', typeof protobuf);
+        // Immediately log protobuf availability
+        console.log('Document starting, protobuf check:', typeof protobuf);
 
-        // Ensure protobuf is loaded before initializing the panel
-        window.onload = function() {
-            console.log('Window loaded, checking protobuf:', typeof protobuf);
-            const errorDisplay = document.getElementById('errorDisplay');
-
+        // Wait for protobuf to be available
+        function initializePanel() {
+            console.log('Initializing panel, protobuf check:', typeof protobuf);
             if (typeof protobuf === 'undefined') {
-                console.error('Protobuf library failed to load');
-                errorDisplay.style.display = 'block';
-                errorDisplay.textContent = 'Error: Protobuf library failed to load. Please check your internet connection and refresh the page.';
+                console.error('Protobuf not available yet, retrying in 100ms');
+                setTimeout(initializePanel, 100);
                 return;
             }
 
-            // Verify protobuf functionality
-            try {
-                const test = protobuf.util;
-                console.log('Protobuf library verified and ready');
-            } catch (e) {
-                console.error('Protobuf library verification failed:', e);
-                errorDisplay.style.display = 'block';
-                errorDisplay.textContent = 'Error: Protobuf library loaded but not working properly. Please refresh the page.';
-                return;
-            }
-
-            // Load panel.js only after protobuf is confirmed to be available
-            var script = document.createElement('script');
+            // Load panel.js
+            const script = document.createElement('script');
             script.src = 'panel.js';
-            script.onerror = function() {
-                console.error('Failed to load panel.js');
-                errorDisplay.style.display = 'block';
-                errorDisplay.textContent = 'Error: Failed to load extension script. Please refresh the page.';
+            script.onerror = (error) => {
+                console.error('Failed to load panel.js:', error);
+                const errorDisplay = document.getElementById('errorDisplay');
+                if (errorDisplay) {
+                    errorDisplay.style.display = 'block';
+                    errorDisplay.textContent = 'Error: Failed to load extension script. Please refresh the page.';
+                }
             };
             document.body.appendChild(script);
-        };
+        }
+
+        // Start initialization when the document is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePanel);
+        } else {
+            initializePanel();
+        }
     </script>
 </body>
 </html>

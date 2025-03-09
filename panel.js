@@ -1,12 +1,31 @@
+// Debug logging function
+function debugLog(message, data = null) {
+    const logMessage = data ? `${message}: ${JSON.stringify(data)}` : message;
+    console.log(logMessage);
+    chrome.runtime.sendMessage({
+        type: 'DEBUG_LOG',
+        data: logMessage
+    });
+}
+
+// Global click handler for debugging
+document.addEventListener('click', (e) => {
+    debugLog('Global click event on element:', {
+        id: e.target.id,
+        tagName: e.target.tagName,
+        className: e.target.className
+    });
+});
+
 class WebSocketDebugger {
     constructor() {
+        debugLog('Initializing WebSocket Debugger');
         this.messages = [];
         this.protoRoot = null;
         this.selectedMessageType = null;
-        console.log('WebSocket Debugger initialized');
 
         if (typeof protobuf === 'undefined') {
-            console.error('Protobuf library not loaded');
+            debugLog('Error: Protobuf library not loaded');
             throw new Error('Protobuf library not loaded');
         }
 
@@ -15,30 +34,87 @@ class WebSocketDebugger {
     }
 
     initializeUI() {
+        debugLog('Starting UI initialization');
         // Proto file upload handling
-        document.getElementById('loadProto').addEventListener('click', () => {
-            const fileInput = document.getElementById('protoFile');
+        const loadButton = document.getElementById('loadProto');
+        const fileInput = document.getElementById('protoFile');
+
+        if (!loadButton || !fileInput) {
+            const error = 'Required UI elements not found: ' + 
+                        `button=${!!loadButton}, input=${!!fileInput}`;
+            debugLog('Error:', error);
+            throw new Error(error);
+        }
+
+        loadButton.onclick = (event) => {
+            debugLog('Load Proto button clicked');
+            event.preventDefault();
+            // Add visual feedback
+            loadButton.style.backgroundColor = '#1565C0';
+            setTimeout(() => loadButton.style.backgroundColor = '', 200);
+
             const file = fileInput.files[0];
             if (file) {
-                console.log('Loading proto file:', file.name);
+                debugLog('Loading proto file:', { name: file.name });
                 this.loadProtoFile(file);
+            } else {
+                debugLog('No file selected');
+                this.showError('Please select a proto file first');
             }
-        });
+        };
 
         // Message type selector
         this.messageTypeSelect = document.getElementById('messageTypeSelect');
-        this.messageTypeSelect.addEventListener('change', (e) => {
-            this.selectedMessageType = e.target.value;
-            console.log('Selected message type:', this.selectedMessageType);
-            // Refresh displayed messages with new type
-            this.updateMessageList();
-        });
+        if (!this.messageTypeSelect) {
+            debugLog('Error: Message type selector not found');
+            throw new Error('Message type selector not found');
+        }
 
-        // Initialize message list container
+        this.messageTypeSelect.onchange = (e) => {
+            this.selectedMessageType = e.target.value;
+            debugLog('Selected message type:', { type: this.selectedMessageType });
+            this.updateMessageList();
+        };
+
+        // Initialize containers
         this.messageListContainer = document.getElementById('messageList');
         this.messageDetailContainer = document.getElementById('messageDetail');
+        this.errorDisplay = document.getElementById('errorDisplay');
 
-        console.log('UI initialized successfully');
+        if (!this.messageListContainer || !this.messageDetailContainer || !this.errorDisplay) {
+            const error = 'Required containers not found';
+            debugLog('Error:', error);
+            throw new Error(error);
+        }
+
+        // Add file input change handler
+        fileInput.onchange = () => {
+            debugLog('File input changed');
+            if (fileInput.files.length > 0) {
+                debugLog('File selected:', { name: fileInput.files[0].name });
+                loadButton.disabled = false;
+                this.errorDisplay.style.display = 'none';
+            } else {
+                debugLog('No file selected');
+                loadButton.disabled = true;
+            }
+        };
+
+        // Initial button state
+        loadButton.disabled = fileInput.files.length === 0;
+        debugLog('UI initialization complete');
+    }
+
+    showError(message) {
+        console.error(message);
+        if (this.errorDisplay) {
+            this.errorDisplay.textContent = message;
+            this.errorDisplay.style.display = 'block';
+        }
+        chrome.runtime.sendMessage({
+            type: 'DEBUG_LOG',
+            data: 'Error: ' + message
+        });
     }
 
     async loadProtoFile(file) {
@@ -72,11 +148,7 @@ class WebSocketDebugger {
             });
         } catch (error) {
             console.error('Error loading proto file:', error);
-            this.messageDetailContainer.textContent = `Error loading proto file: ${error.message}`;
-            chrome.runtime.sendMessage({
-                type: 'DEBUG_LOG',
-                data: 'Proto file error: ' + error.message
-            });
+            this.showError(`Error loading proto file: ${error.message}`);
         }
     }
 
@@ -220,11 +292,24 @@ class WebSocketDebugger {
 // Initialize the debugger when the panel loads
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Panel DOM loaded, checking protobuf availability');
-    if (typeof protobuf === 'undefined') {
-        console.error('Protobuf library not available');
-        document.getElementById('messageDetail').textContent = 'Error: Protobuf library not loaded. Please refresh the page.';
-        return;
+    try {
+        if (typeof protobuf === 'undefined') {
+            console.error('Protobuf library not available');
+            const errorDisplay = document.getElementById('errorDisplay');
+            if (errorDisplay) {
+                errorDisplay.style.display = 'block';
+                errorDisplay.textContent = 'Error: Protobuf library not loaded. Please refresh the page.';
+            }
+            return;
+        }
+        console.log('Initializing WebSocket Debugger');
+        new WebSocketDebugger();
+    } catch (error) {
+        console.error('Error initializing WebSocket Debugger:', error);
+        const errorDisplay = document.getElementById('errorDisplay');
+        if (errorDisplay) {
+            errorDisplay.style.display = 'block';
+            errorDisplay.textContent = `Error: ${error.message}. Please refresh the page.`;
+        }
     }
-    console.log('Initializing WebSocket Debugger');
-    new WebSocketDebugger();
 });
