@@ -11,6 +11,10 @@ function debugLog(message, data = null) {
 // Specific decoder for our TestMessage type
 const TestMessageDecoder = {
     decode: function(buffer) {
+        if (!(buffer instanceof ArrayBuffer)) {
+            throw new Error('Input must be an ArrayBuffer');
+        }
+
         const view = new DataView(buffer);
         let offset = 0;
         const result = {};
@@ -148,16 +152,33 @@ class WebSocketDebugger {
             debugLog('Handling WebSocket message');
             const message = {
                 timestamp: new Date().toISOString(),
-                rawData: data instanceof ArrayBuffer ?
-                    new Uint8Array(data) :
-                    data instanceof Blob ?
-                        new Uint8Array(await data.arrayBuffer()) :
-                        this.parseMessageData(data),
+                rawData: null,
                 decoded: null
             };
 
+            // Convert the data to an ArrayBuffer if it isn't already
+            if (data instanceof ArrayBuffer) {
+                message.rawData = data;
+            } else if (data instanceof Blob) {
+                message.rawData = await data.arrayBuffer();
+            } else if (typeof data === 'string') {
+                // Handle base64 encoded data
+                try {
+                    const binary = atob(data);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) {
+                        bytes[i] = binary.charCodeAt(i);
+                    }
+                    message.rawData = bytes.buffer;
+                } catch (e) {
+                    throw new Error('Invalid message format: expected ArrayBuffer, Blob, or base64 string');
+                }
+            } else {
+                throw new Error('Invalid message format: expected ArrayBuffer, Blob, or base64 string');
+            }
+
             try {
-                message.decoded = TestMessageDecoder.decode(message.rawData.buffer);
+                message.decoded = TestMessageDecoder.decode(message.rawData);
                 debugLog('Message decoded successfully:', message.decoded);
             } catch (error) {
                 debugLog('Failed to decode message:', error);
@@ -171,26 +192,6 @@ class WebSocketDebugger {
             debugLog('Error handling WebSocket message:', error);
             this.showError(`Failed to process message: ${error.message}`);
         }
-    }
-
-    parseMessageData(data) {
-        if (data instanceof ArrayBuffer) {
-            return new Uint8Array(data);
-        } else if (typeof data === 'string') {
-            try {
-                // Try to parse as base64
-                const binary = atob(data);
-                const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) {
-                    bytes[i] = binary.charCodeAt(i);
-                }
-                return bytes;
-            } catch (e) {
-                // If not base64, return as string
-                return data;
-            }
-        }
-        return data;
     }
 
     updateMessageList() {
@@ -226,7 +227,7 @@ class WebSocketDebugger {
                     <h4>Decoded Message:</h4>
                     <pre>${JSON.stringify(message.decoded, null, 2)}</pre>
                     <h4>Raw Data:</h4>
-                    <pre>${JSON.stringify(Array.from(message.rawData), null, 2)}</pre>`;
+                    <pre>${JSON.stringify(Array.from(new Uint8Array(message.rawData)), null, 2)}</pre>`;
             } else {
                 this.messageDetailContainer.textContent = 'Failed to decode message';
             }

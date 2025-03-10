@@ -7,6 +7,18 @@
 <body>
     <div class="container">
         <div id="errorDisplay" class="error-display" style="display: none;"></div>
+        <div class="proto-config">
+            <div class="proto-upload">
+                <input type="file" id="protoFile" accept=".proto" />
+                <button id="loadProto">Load Proto File</button>
+            </div>
+            <div class="message-type-selector">
+                <select id="messageTypeSelect" disabled>
+                    <option value="TestMessage">TestMessage</option>
+                </select>
+            </div>
+        </div>
+
         <div class="websocket-container">
             <div class="message-list">
                 <h3>WebSocket Messages</h3>
