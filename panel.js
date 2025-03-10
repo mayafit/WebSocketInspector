@@ -11,16 +11,14 @@ function debugLog(message, data = null) {
 class WebSocketDebugger {
     constructor() {
         debugLog('Initializing WebSocket Debugger');
+        alert('Debug: Initializing WebSocket Debugger'); // Debug popup
+
         this.messages = [];
         this.protoRoot = null;
         this.selectedMessageType = null;
         this.activeConnections = new Map();
 
-        // Verify protobuf availability
-        if (!this.verifyProtobuf()) {
-            throw new Error('Protobuf library not loaded');
-        }
-
+        // Initialize UI elements
         this.initializeUI();
         this.setupWebSocketListener();
     }
@@ -44,6 +42,7 @@ class WebSocketDebugger {
 
     initializeUI() {
         debugLog('Starting UI initialization');
+        alert('Debug: Starting UI initialization'); // Debug popup
 
         // Get UI elements
         const loadButton = document.getElementById('loadProto');
@@ -59,6 +58,7 @@ class WebSocketDebugger {
             !this.messageDetailContainer) {
             const error = 'Required UI elements not found';
             debugLog('Error:', error);
+            alert('Debug: Required UI elements not found'); // Debug popup
             throw new Error(error);
         }
 
@@ -66,10 +66,12 @@ class WebSocketDebugger {
         loadButton.addEventListener('click', async (event) => {
             event.preventDefault();
             debugLog('Load Proto button clicked');
+            alert('Debug: Button clicked'); // Debug popup
 
             // If no file is selected, trigger file input click
             if (fileInput.files.length === 0) {
                 debugLog('No file selected, triggering file input');
+                alert('Debug: No file selected, opening file dialog'); // Debug popup
                 fileInput.click();
                 return;
             }
@@ -81,16 +83,20 @@ class WebSocketDebugger {
 
                 const file = fileInput.files[0];
                 debugLog('Processing selected file:', { name: file.name });
+                alert(`Debug: Processing file: ${file.name}`); // Debug popup
+
                 await this.loadProtoFile(file);
                 debugLog('File processed successfully');
 
                 // Success feedback
                 loadButton.textContent = 'Proto File Loaded';
+                alert('Debug: Proto file loaded successfully'); // Debug popup
                 setTimeout(() => {
                     loadButton.textContent = 'Load Proto File';
                 }, 2000);
             } catch (error) {
                 debugLog('Error processing file:', error);
+                alert(`Debug: Error loading file: ${error.message}`); // Debug popup
                 this.showError(`Failed to load proto file: ${error.message}`);
                 loadButton.textContent = 'Load Proto File';
             } finally {
@@ -101,6 +107,7 @@ class WebSocketDebugger {
         // File input change handler
         fileInput.addEventListener('change', () => {
             debugLog('File input changed');
+            alert('Debug: File input changed'); // Debug popup
             const file = fileInput.files[0];
             if (file) {
                 debugLog('File selected:', { name: file.name });
@@ -326,21 +333,33 @@ class WebSocketDebugger {
     }
 }
 
-// Initialize the debugger when the panel loads
-document.addEventListener('DOMContentLoaded', () => {
-    debugLog('Panel DOM loaded');
+// Initialize the debugger
+function initializeDebugger() {
+    debugLog('Starting debugger initialization');
+    alert('Debug: Starting debugger initialization'); // Debug popup
     try {
         if (!window.protobuf) {
-            throw new Error('Protobuf library not loaded. Please refresh the page.');
+            const error = 'Protobuf library not loaded. Please refresh the page.';
+            alert(`Debug: Error - ${error}`); // Debug popup
+            throw new Error(error);
         }
         new WebSocketDebugger();
         debugLog('WebSocket Debugger initialized successfully');
+        alert('Debug: WebSocket Debugger initialized successfully'); // Debug popup
     } catch (error) {
         console.error('Error initializing WebSocket Debugger:', error);
+        alert(`Debug: Initialization error - ${error.message}`); // Debug popup
         const errorDisplay = document.getElementById('errorDisplay');
         if (errorDisplay) {
             errorDisplay.style.display = 'block';
             errorDisplay.textContent = `Error: ${error.message}. Please refresh the page.`;
         }
     }
-});
+}
+
+// Run initialization based on document ready state
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDebugger);
+} else {
+    initializeDebugger();
+}
