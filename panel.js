@@ -190,25 +190,31 @@ class WebSocketDebugger {
         try {
             debugLog('Handling WebSocket message', {
                 dataType: typeof data,
-                isArrayBuffer: data instanceof ArrayBuffer,
-                isBlob: data instanceof Blob,
-                byteLength: data instanceof ArrayBuffer ? data.byteLength : 'N/A'
+                isArray: Array.isArray(data),
+                length: data ? data.length : 0
             });
 
-            if (!(data instanceof ArrayBuffer)) {
-                const error = `Invalid message format: expected ArrayBuffer, got ${typeof data}`;
+            if (!Array.isArray(data)) {
+                const error = `Invalid message format: expected Array, got ${typeof data}`;
                 debugLog('Error:', error);
                 throw new Error(error);
             }
 
+            // Convert array back to ArrayBuffer
+            const buffer = new ArrayBuffer(data.length);
+            const view = new Uint8Array(buffer);
+            data.forEach((value, index) => {
+                view[index] = value;
+            });
+
             const message = {
                 timestamp: new Date().toISOString(),
-                rawData: data,
+                rawData: buffer,
                 decoded: null
             };
 
             try {
-                message.decoded = TestMessageDecoder.decode(data);
+                message.decoded = TestMessageDecoder.decode(buffer);
                 debugLog('Message decoded successfully:', message.decoded);
             } catch (error) {
                 debugLog('Failed to decode message:', error);

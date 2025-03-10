@@ -13,8 +13,8 @@ function connectWebSocket() {
     }
 
     try {
-        console.log('Attempting to connect to WebSocket server at ws://localhost:5000');
-        ws = new WebSocket('ws://localhost:5000');
+        console.log('Attempting to connect to WebSocket server at ws://127.0.0.1:5000');
+        ws = new WebSocket('ws://127.0.0.1:5000');
         ws.binaryType = 'arraybuffer';  // Set binary type to arraybuffer
 
         ws.onopen = () => {
@@ -39,9 +39,11 @@ function connectWebSocket() {
                 return;
             }
 
+            // Convert ArrayBuffer to Array for message passing
+            const uint8Array = new Uint8Array(event.data);
             broadcastToDevTools({ 
                 type: 'WS_MESSAGE', 
-                data: event.data
+                data: Array.from(uint8Array)  // Convert to regular array for serialization
             });
         };
 
@@ -74,7 +76,12 @@ function connectWebSocket() {
 
 // Broadcast message to all active DevTools connections
 function broadcastToDevTools(message) {
-    console.log('Broadcasting to DevTools:', message);
+    console.log('Broadcasting to DevTools:', {
+        type: message.type,
+        dataLength: message.data ? message.data.length : 'N/A',
+        isArray: message.data ? Array.isArray(message.data) : false
+    });
+
     activeConnections.forEach(port => {
         try {
             port.postMessage(message);

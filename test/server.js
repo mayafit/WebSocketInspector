@@ -2,8 +2,16 @@ const WebSocket = require('ws');
 const protobuf = require('protobufjs');
 const path = require('path');
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ port: 5000 });
+// Create WebSocket server with proper configuration
+const wss = new WebSocket.Server({ 
+    host: '127.0.0.1',
+    port: 5000,
+    verifyClient: ({ origin, req }, callback) => {
+        console.log('Connection attempt from origin:', origin);
+        // Accept connections from Chrome extension and localhost
+        callback(true); // Accept all connections for testing
+    }
+});
 
 // Load proto file
 async function loadProtoFile() {
@@ -35,17 +43,21 @@ async function startMessageBroadcast(TestMessage) {
         const errMsg = TestMessage.verify(message);
         if (errMsg) throw Error(errMsg);
 
-        // Create a new message
+        // Create and encode the message
         const protoMessage = TestMessage.create(message);
-
-        // Encode the message
         const buffer = TestMessage.encode(protoMessage).finish();
+
+        // Log the message being sent
+        console.log('Sending message:', {
+            counter,
+            bufferLength: buffer.length,
+            messageContent: message
+        });
 
         // Broadcast to all clients
         wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
                 client.send(buffer);
-                console.log('Sent message:', message);
             }
         });
 
@@ -54,8 +66,11 @@ async function startMessageBroadcast(TestMessage) {
 }
 
 // Initialize the server
-wss.on('connection', (ws) => {
-    console.log('Client connected');
+wss.on('connection', (ws, req) => {
+    console.log('Client connected:', {
+        headers: req.headers,
+        url: req.url
+    });
 
     ws.on('error', (error) => {
         console.error('WebSocket error:', error);
@@ -66,13 +81,17 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('message', (data) => {
-        console.log('Received message from client:', data);
+        console.log('Received message from client:', {
+            dataType: typeof data,
+            isBuffer: Buffer.isBuffer(data),
+            length: data.length
+        });
     });
 });
 
 // Log when server starts listening
 wss.on('listening', () => {
-    console.log('WebSocket server is listening on port 5000');
+    console.log('WebSocket server is listening on 127.0.0.1:5000');
 });
 
 // Handle server errors
