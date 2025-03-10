@@ -77,33 +77,36 @@ class WebSocketDebugger {
             try {
                 // Visual feedback
                 loadButton.disabled = true;
-                loadButton.style.backgroundColor = '#1565C0';
+                loadButton.textContent = 'Loading...';
 
                 const file = fileInput.files[0];
                 debugLog('Processing selected file:', { name: file.name });
                 await this.loadProtoFile(file);
                 debugLog('File processed successfully');
+
+                // Success feedback
+                loadButton.textContent = 'Proto File Loaded';
+                setTimeout(() => {
+                    loadButton.textContent = 'Load Proto File';
+                }, 2000);
             } catch (error) {
                 debugLog('Error processing file:', error);
                 this.showError(`Failed to load proto file: ${error.message}`);
+                loadButton.textContent = 'Load Proto File';
             } finally {
                 loadButton.disabled = false;
-                loadButton.style.backgroundColor = '';
             }
         });
 
         // File input change handler
-        fileInput.addEventListener('change', (event) => {
+        fileInput.addEventListener('change', () => {
             debugLog('File input changed');
-            const file = event.target.files[0];
+            const file = fileInput.files[0];
             if (file) {
                 debugLog('File selected:', { name: file.name });
                 // Enable the button and clear any previous errors
                 loadButton.disabled = false;
                 this.errorDisplay.style.display = 'none';
-
-                // Automatically trigger the load after file selection
-                loadButton.click();
             } else {
                 debugLog('No file selected');
                 loadButton.disabled = true;
