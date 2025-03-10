@@ -271,19 +271,31 @@ class WebSocketDebugger {
             debugLog('Handling WebSocket message');
             const message = {
                 timestamp: new Date().toISOString(),
-                rawData: data instanceof Blob ?
-                    new Uint8Array(await data.arrayBuffer()) :
-                    this.parseMessageData(data),
+                rawData: data instanceof ArrayBuffer ?
+                    new Uint8Array(data) :
+                    data instanceof Blob ?
+                        new Uint8Array(await data.arrayBuffer()) :
+                        this.parseMessageData(data),
                 decoded: null
             };
+
+            debugLog('Raw data type:', typeof data, data instanceof ArrayBuffer, data instanceof Blob);
+            debugLog('Converted data:', message.rawData);
 
             if (this.protoRoot && this.selectedMessageType) {
                 try {
                     const MessageType = this.protoRoot.lookupType(this.selectedMessageType);
-                    message.decoded = MessageType.decode(message.rawData).toJSON();
+                    const decodedMessage = MessageType.decode(message.rawData);
+                    message.decoded = MessageType.toObject(decodedMessage, {
+                        longs: String,
+                        enums: String,
+                        bytes: String,
+                        defaults: true
+                    });
                     debugLog('Message decoded successfully:', message.decoded);
                 } catch (error) {
                     debugLog('Failed to decode message:', error);
+                    this.showError(`Failed to decode message: ${error.message}`);
                 }
             }
 
@@ -347,7 +359,9 @@ class WebSocketDebugger {
             if (message.decoded) {
                 this.messageDetailContainer.innerHTML = `
                     <h4>Decoded Message:</h4>
-                    <pre>${JSON.stringify(message.decoded, null, 2)}</pre>`;
+                    <pre>${JSON.stringify(message.decoded, null, 2)}</pre>
+                    <h4>Raw Data:</h4>
+                    <pre>${JSON.stringify(Array.from(message.rawData), null, 2)}</pre>`;
             } else if (!this.protoRoot || !this.selectedMessageType) {
                 this.messageDetailContainer.textContent = 'Please load a proto file and select a message type';
             } else {
