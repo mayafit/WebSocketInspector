@@ -13,6 +13,7 @@ function connectWebSocket() {
     }
 
     try {
+        console.log('Attempting to connect to WebSocket server at ws://localhost:5000');
         ws = new WebSocket('ws://localhost:5000');
         ws.binaryType = 'arraybuffer';  // Set binary type to arraybuffer
 
@@ -22,26 +23,34 @@ function connectWebSocket() {
         };
 
         ws.onmessage = (event) => {
-            console.log('WebSocket message received');
-            // Convert data to ArrayBuffer if needed
-            let data = event.data;
-            if (data instanceof Blob) {
-                data.arrayBuffer().then(buffer => {
-                    broadcastToDevTools({ 
-                        type: 'WS_MESSAGE', 
-                        data: buffer
-                    });
-                });
-            } else {
+            console.log('WebSocket message received:', {
+                dataType: typeof event.data,
+                isArrayBuffer: event.data instanceof ArrayBuffer,
+                isBlob: event.data instanceof Blob,
+                byteLength: event.data instanceof ArrayBuffer ? event.data.byteLength : 'N/A'
+            });
+
+            if (!(event.data instanceof ArrayBuffer)) {
+                console.error('Unexpected data type:', typeof event.data);
                 broadcastToDevTools({ 
-                    type: 'WS_MESSAGE', 
-                    data: data
+                    type: 'WS_ERROR', 
+                    error: `Unexpected data type: ${typeof event.data}` 
                 });
+                return;
             }
+
+            broadcastToDevTools({ 
+                type: 'WS_MESSAGE', 
+                data: event.data
+            });
         };
 
         ws.onerror = (error) => {
-            console.log('WebSocket error:', error);
+            console.log('WebSocket error:', {
+                error: error,
+                readyState: ws.readyState,
+                url: ws.url
+            });
             broadcastToDevTools({ 
                 type: 'WS_ERROR', 
                 error: 'Failed to connect to WebSocket server' 
@@ -65,6 +74,7 @@ function connectWebSocket() {
 
 // Broadcast message to all active DevTools connections
 function broadcastToDevTools(message) {
+    console.log('Broadcasting to DevTools:', message);
     activeConnections.forEach(port => {
         try {
             port.postMessage(message);

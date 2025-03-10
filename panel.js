@@ -2,10 +2,6 @@
 function debugLog(message, data = null) {
     const logMessage = data ? `${message}: ${JSON.stringify(data)}` : message;
     console.log(logMessage);
-    chrome.runtime.sendMessage({
-        type: 'DEBUG_LOG',
-        data: logMessage
-    });
 }
 
 // Specific decoder for our TestMessage type
@@ -77,9 +73,9 @@ const TestMessageDecoder = {
 class WebSocketDebugger {
     constructor() {
         debugLog('Initializing WebSocket Debugger');
-
         this.messages = [];
         this.port = null;
+        this.messageTypes = ['TestMessage']; // Default message type
 
         // Initialize UI elements
         this.initializeUI();
@@ -90,24 +86,20 @@ class WebSocketDebugger {
         debugLog('Starting UI initialization');
 
         // Get UI elements
-        const loadButton = document.getElementById('loadProto');
         const fileInput = document.getElementById('protoFile');
+        const loadButton = document.getElementById('loadProto');
         this.errorDisplay = document.getElementById('errorDisplay');
+        this.messageTypeSelect = document.getElementById('messageTypeSelect');
         this.messageListContainer = document.getElementById('messageList');
         this.messageDetailContainer = document.getElementById('messageDetail');
 
         // Verify all required elements exist
-        if (!loadButton || !fileInput || !this.errorDisplay || !this.messageListContainer || !this.messageDetailContainer) {
+        if (!loadButton || !fileInput || !this.errorDisplay || !this.messageTypeSelect || 
+            !this.messageListContainer || !this.messageDetailContainer) {
             const error = 'Required UI elements not found';
             debugLog('Error:', error);
             throw new Error(error);
         }
-
-        // Add button click handler
-        loadButton.addEventListener('click', () => {
-            debugLog('Load Proto button clicked');
-            fileInput.click();
-        });
 
         // File input change handler
         fileInput.addEventListener('change', () => {
@@ -115,12 +107,44 @@ class WebSocketDebugger {
             const file = fileInput.files[0];
             if (file) {
                 debugLog('File selected:', { name: file.name });
-                // Clear any previous errors
+                // Enable load button and clear errors
+                loadButton.disabled = false;
                 this.showError('');
             }
         });
 
+        // Load button click handler
+        loadButton.addEventListener('click', () => {
+            debugLog('Load Proto button clicked');
+            const file = fileInput.files[0];
+            if (file) {
+                this.loadProtoFile(file);
+            }
+        });
+
+        // Message type selection handler
+        this.messageTypeSelect.addEventListener('change', (e) => {
+            debugLog('Message type changed:', e.target.value);
+            this.selectedMessageType = e.target.value;
+        });
+
+        // Set initial button state and message type
+        loadButton.disabled = fileInput.files.length === 0;
+        this.selectedMessageType = this.messageTypeSelect.value;
         debugLog('UI initialization complete');
+    }
+
+    async loadProtoFile(file) {
+        try {
+            debugLog('Loading proto file:', file.name);
+            // For now, we're using the built-in TestMessage decoder
+            // Future implementation will parse the proto file
+            this.showError('');
+            debugLog('Proto file loaded successfully');
+        } catch (error) {
+            debugLog('Error loading proto file:', error);
+            this.showError(`Failed to load proto file: ${error.message}`);
+        }
     }
 
     connectToBackgroundScript() {
@@ -133,7 +157,7 @@ class WebSocketDebugger {
             switch(message.type) {
                 case 'WS_CONNECTED':
                     debugLog('WebSocket connected');
-                    this.showError('');  // Clear any error messages
+                    this.showError('');
                     break;
 
                 case 'WS_MESSAGE':
@@ -164,24 +188,27 @@ class WebSocketDebugger {
 
     async handleWebSocketMessage(data) {
         try {
-            debugLog('Handling WebSocket message');
+            debugLog('Handling WebSocket message', {
+                dataType: typeof data,
+                isArrayBuffer: data instanceof ArrayBuffer,
+                isBlob: data instanceof Blob,
+                byteLength: data instanceof ArrayBuffer ? data.byteLength : 'N/A'
+            });
+
+            if (!(data instanceof ArrayBuffer)) {
+                const error = `Invalid message format: expected ArrayBuffer, got ${typeof data}`;
+                debugLog('Error:', error);
+                throw new Error(error);
+            }
+
             const message = {
                 timestamp: new Date().toISOString(),
-                rawData: null,
+                rawData: data,
                 decoded: null
             };
 
-            // Convert the data to an ArrayBuffer
-            if (data instanceof ArrayBuffer) {
-                message.rawData = data;
-            } else if (data instanceof Blob) {
-                message.rawData = await data.arrayBuffer();
-            } else {
-                throw new Error('Invalid message format: expected ArrayBuffer or Blob');
-            }
-
             try {
-                message.decoded = TestMessageDecoder.decode(message.rawData);
+                message.decoded = TestMessageDecoder.decode(data);
                 debugLog('Message decoded successfully:', message.decoded);
             } catch (error) {
                 debugLog('Failed to decode message:', error);
@@ -191,6 +218,7 @@ class WebSocketDebugger {
             this.messages.push(message);
             this.updateMessageList();
             debugLog('Message processed and list updated');
+
         } catch (error) {
             debugLog('Error handling WebSocket message:', error);
             this.showError(`Failed to process message: ${error.message}`);
