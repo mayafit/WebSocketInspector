@@ -14,7 +14,7 @@ function connectWebSocket() {
 
     try {
         ws = new WebSocket('ws://localhost:5000');
-        ws.binaryType = 'arraybuffer';
+        ws.binaryType = 'arraybuffer';  // Set binary type to arraybuffer
 
         ws.onopen = () => {
             console.log('WebSocket connected to test server');
@@ -23,10 +23,21 @@ function connectWebSocket() {
 
         ws.onmessage = (event) => {
             console.log('WebSocket message received');
-            broadcastToDevTools({ 
-                type: 'WS_MESSAGE', 
-                data: event.data 
-            });
+            // Convert data to ArrayBuffer if needed
+            let data = event.data;
+            if (data instanceof Blob) {
+                data.arrayBuffer().then(buffer => {
+                    broadcastToDevTools({ 
+                        type: 'WS_MESSAGE', 
+                        data: buffer
+                    });
+                });
+            } else {
+                broadcastToDevTools({ 
+                    type: 'WS_MESSAGE', 
+                    data: data
+                });
+            }
         };
 
         ws.onerror = (error) => {

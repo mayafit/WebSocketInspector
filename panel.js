@@ -49,7 +49,6 @@ const TestMessageDecoder = {
                     offset += 12;
                     break;
                 default:
-                    // Skip unknown fields
                     offset = this.skipField(buffer, offset, wireType);
             }
         }
@@ -78,7 +77,6 @@ const TestMessageDecoder = {
 class WebSocketDebugger {
     constructor() {
         debugLog('Initializing WebSocket Debugger');
-        alert('Debug: Initializing WebSocket Debugger'); // Debug popup
 
         this.messages = [];
         this.port = null;
@@ -90,20 +88,37 @@ class WebSocketDebugger {
 
     initializeUI() {
         debugLog('Starting UI initialization');
-        alert('Debug: Starting UI initialization'); // Debug popup
 
         // Get UI elements
+        const loadButton = document.getElementById('loadProto');
+        const fileInput = document.getElementById('protoFile');
         this.errorDisplay = document.getElementById('errorDisplay');
         this.messageListContainer = document.getElementById('messageList');
         this.messageDetailContainer = document.getElementById('messageDetail');
 
         // Verify all required elements exist
-        if (!this.errorDisplay || !this.messageListContainer || !this.messageDetailContainer) {
+        if (!loadButton || !fileInput || !this.errorDisplay || !this.messageListContainer || !this.messageDetailContainer) {
             const error = 'Required UI elements not found';
             debugLog('Error:', error);
-            alert('Debug: Required UI elements not found'); // Debug popup
             throw new Error(error);
         }
+
+        // Add button click handler
+        loadButton.addEventListener('click', () => {
+            debugLog('Load Proto button clicked');
+            fileInput.click();
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', () => {
+            debugLog('File input changed');
+            const file = fileInput.files[0];
+            if (file) {
+                debugLog('File selected:', { name: file.name });
+                // Clear any previous errors
+                this.showError('');
+            }
+        });
 
         debugLog('UI initialization complete');
     }
@@ -156,25 +171,13 @@ class WebSocketDebugger {
                 decoded: null
             };
 
-            // Convert the data to an ArrayBuffer if it isn't already
+            // Convert the data to an ArrayBuffer
             if (data instanceof ArrayBuffer) {
                 message.rawData = data;
             } else if (data instanceof Blob) {
                 message.rawData = await data.arrayBuffer();
-            } else if (typeof data === 'string') {
-                // Handle base64 encoded data
-                try {
-                    const binary = atob(data);
-                    const bytes = new Uint8Array(binary.length);
-                    for (let i = 0; i < binary.length; i++) {
-                        bytes[i] = binary.charCodeAt(i);
-                    }
-                    message.rawData = bytes.buffer;
-                } catch (e) {
-                    throw new Error('Invalid message format: expected ArrayBuffer, Blob, or base64 string');
-                }
             } else {
-                throw new Error('Invalid message format: expected ArrayBuffer, Blob, or base64 string');
+                throw new Error('Invalid message format: expected ArrayBuffer or Blob');
             }
 
             try {
@@ -241,14 +244,11 @@ class WebSocketDebugger {
 // Initialize the debugger
 function initializeDebugger() {
     debugLog('Starting debugger initialization');
-    alert('Debug: Starting debugger initialization'); // Debug popup
     try {
         new WebSocketDebugger();
         debugLog('WebSocket Debugger initialized successfully');
-        alert('Debug: WebSocket Debugger initialized successfully'); // Debug popup
     } catch (error) {
         console.error('Error initializing WebSocket Debugger:', error);
-        alert(`Debug: Initialization error - ${error.message}`); // Debug popup
         const errorDisplay = document.getElementById('errorDisplay');
         if (errorDisplay) {
             errorDisplay.style.display = 'block';
