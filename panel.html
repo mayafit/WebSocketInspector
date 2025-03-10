@@ -3,7 +3,6 @@
 <head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="styles.css">
-    <script src="lib/protobuf.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -32,39 +31,58 @@
             </div>
         </div>
     </div>
+
+    <!-- Load protobuf library first -->
+    <script src="lib/protobuf.min.js"></script>
     <script>
-        // Log protobuf availability immediately
-        console.log('Document starting, protobuf check:', typeof protobuf);
-
         // Wait for protobuf to be available
-        function initializePanel() {
-            console.log('Initializing panel, protobuf check:', typeof protobuf);
-            if (typeof protobuf === 'undefined') {
-                console.error('Protobuf not available yet, retrying in 100ms');
-                setTimeout(initializePanel, 100);
-                return;
-            }
+        function waitForProtobuf() {
+            return new Promise((resolve, reject) => {
+                const maxAttempts = 50;
+                let attempts = 0;
 
-            // Load panel.js
-            const script = document.createElement('script');
-            script.src = 'panel.js';
-            script.onerror = (error) => {
-                console.error('Failed to load panel.js:', error);
+                function checkProtobuf() {
+                    console.log('Checking protobuf availability...');
+                    if (typeof protobuf !== 'undefined') {
+                        console.log('Protobuf is available!');
+                        resolve();
+                    } else if (attempts >= maxAttempts) {
+                        console.error('Protobuf failed to load after multiple attempts');
+                        reject(new Error('Protobuf library failed to load'));
+                    } else {
+                        attempts++;
+                        setTimeout(checkProtobuf, 100);
+                    }
+                }
+
+                checkProtobuf();
+            });
+        }
+
+        // Initialize the panel once protobuf is ready
+        waitForProtobuf()
+            .then(() => {
+                console.log('Loading panel.js...');
+                const script = document.createElement('script');
+                script.src = 'panel.js';
+                script.onerror = (error) => {
+                    console.error('Failed to load panel.js:', error);
+                    const errorDisplay = document.getElementById('errorDisplay');
+                    if (errorDisplay) {
+                        errorDisplay.style.display = 'block';
+                        errorDisplay.textContent = 'Error: Failed to load extension script. Please refresh the page.';
+                    }
+                };
+                document.body.appendChild(script);
+            })
+            .catch(error => {
+                console.error('Failed to initialize:', error);
                 const errorDisplay = document.getElementById('errorDisplay');
                 if (errorDisplay) {
                     errorDisplay.style.display = 'block';
-                    errorDisplay.textContent = 'Error: Failed to load extension script. Please refresh the page.';
+                    errorDisplay.textContent = 'Error: ' + error.message + ' Please refresh the page.';
                 }
-            };
-            document.body.appendChild(script);
-        }
-
-        // Start initialization when the document is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializePanel);
-        } else {
-            initializePanel();
-        }
+            });
     </script>
 </body>
 </html>

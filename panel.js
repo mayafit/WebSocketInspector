@@ -16,14 +16,30 @@ class WebSocketDebugger {
         this.selectedMessageType = null;
         this.activeConnections = new Map();
 
-        // Check protobuf availability immediately
-        if (typeof protobuf === 'undefined') {
-            debugLog('Error: Protobuf library not loaded');
+        // Verify protobuf availability
+        if (!this.verifyProtobuf()) {
             throw new Error('Protobuf library not loaded');
         }
 
         this.initializeUI();
         this.setupWebSocketListener();
+    }
+
+    verifyProtobuf() {
+        debugLog('Verifying protobuf availability');
+        if (typeof protobuf === 'undefined') {
+            debugLog('Error: Protobuf is undefined');
+            return false;
+        }
+        try {
+            // Try to access some protobuf functionality to verify it's working
+            const test = protobuf.util;
+            debugLog('Protobuf verified successfully');
+            return true;
+        } catch (error) {
+            debugLog('Error verifying protobuf:', error);
+            return false;
+        }
     }
 
     initializeUI() {
@@ -33,8 +49,14 @@ class WebSocketDebugger {
         const loadButton = document.getElementById('loadProto');
         const fileInput = document.getElementById('protoFile');
         this.errorDisplay = document.getElementById('errorDisplay');
+        this.messageTypeSelect = document.getElementById('messageTypeSelect');
+        this.messageListContainer = document.getElementById('messageList');
+        this.messageDetailContainer = document.getElementById('messageDetail');
 
-        if (!loadButton || !fileInput || !this.errorDisplay) {
+        // Verify all required elements exist
+        if (!loadButton || !fileInput || !this.errorDisplay || 
+            !this.messageTypeSelect || !this.messageListContainer || 
+            !this.messageDetailContainer) {
             const error = 'Required UI elements not found';
             debugLog('Error:', error);
             throw new Error(error);
@@ -52,11 +74,11 @@ class WebSocketDebugger {
                 return;
             }
 
-            // Visual feedback
-            loadButton.style.backgroundColor = '#1565C0';
-            setTimeout(() => loadButton.style.backgroundColor = '', 200);
-
             try {
+                // Visual feedback
+                loadButton.disabled = true;
+                loadButton.style.backgroundColor = '#1565C0';
+
                 const file = fileInput.files[0];
                 debugLog('Processing selected file:', { name: file.name });
                 await this.loadProtoFile(file);
@@ -64,6 +86,9 @@ class WebSocketDebugger {
             } catch (error) {
                 debugLog('Error processing file:', error);
                 this.showError(`Failed to load proto file: ${error.message}`);
+            } finally {
+                loadButton.disabled = false;
+                loadButton.style.backgroundColor = '';
             }
         });
 
@@ -73,7 +98,7 @@ class WebSocketDebugger {
             const file = event.target.files[0];
             if (file) {
                 debugLog('File selected:', { name: file.name });
-                // Enable the button and update UI
+                // Enable the button and clear any previous errors
                 loadButton.disabled = false;
                 this.errorDisplay.style.display = 'none';
 
@@ -85,26 +110,12 @@ class WebSocketDebugger {
             }
         });
 
-        // Initialize message type selector
-        this.messageTypeSelect = document.getElementById('messageTypeSelect');
-        if (!this.messageTypeSelect) {
-            throw new Error('Message type selector not found');
-        }
-
         // Message type selection handler
         this.messageTypeSelect.addEventListener('change', (e) => {
             this.selectedMessageType = e.target.value;
             debugLog('Selected message type:', { type: this.selectedMessageType });
             this.updateMessageList();
         });
-
-        // Initialize containers
-        this.messageListContainer = document.getElementById('messageList');
-        this.messageDetailContainer = document.getElementById('messageDetail');
-
-        if (!this.messageListContainer || !this.messageDetailContainer) {
-            throw new Error('Required containers not found');
-        }
 
         // Set initial button state
         loadButton.disabled = fileInput.files.length === 0;
@@ -120,6 +131,10 @@ class WebSocketDebugger {
     }
 
     async loadProtoFile(file) {
+        if (!this.verifyProtobuf()) {
+            throw new Error('Protobuf library not available. Please refresh the page.');
+        }
+
         try {
             debugLog('Starting to load proto file');
             const content = await file.text();
@@ -133,22 +148,25 @@ class WebSocketDebugger {
             this.protoRoot = parsed.root;
             debugLog('Proto file parsed successfully');
 
-            // Populate message type selector
+            // Clear any previous errors
+            this.errorDisplay.style.display = 'none';
+
+            // Update UI with message types
             this.populateMessageTypes(this.protoRoot);
 
             // Enable message type selector
             this.messageTypeSelect.disabled = false;
+            debugLog('Message type selector enabled');
 
-            debugLog('Proto file loaded successfully');
-            this.errorDisplay.style.display = 'none';
         } catch (error) {
             debugLog('Error loading proto file:', error);
-            throw error; // Re-throw to be handled by the click handler
+            throw error;
         }
     }
 
     populateMessageTypes(root) {
         debugLog('Populating message types...');
+
         // Clear existing options except the default one
         while (this.messageTypeSelect.options.length > 1) {
             this.messageTypeSelect.remove(1);
@@ -168,7 +186,15 @@ class WebSocketDebugger {
             option.textContent = type;
             this.messageTypeSelect.appendChild(option);
         });
+
         debugLog('Found message types:', messageTypes);
+
+        // Select first message type if available
+        if (messageTypes.length > 0) {
+            this.messageTypeSelect.value = messageTypes[0];
+            this.selectedMessageType = messageTypes[0];
+            debugLog('Auto-selected first message type:', { type: messageTypes[0] });
+        }
     }
 
     setupWebSocketListener() {
@@ -301,6 +327,9 @@ class WebSocketDebugger {
 document.addEventListener('DOMContentLoaded', () => {
     debugLog('Panel DOM loaded');
     try {
+        if (!window.protobuf) {
+            throw new Error('Protobuf library not loaded. Please refresh the page.');
+        }
         new WebSocketDebugger();
         debugLog('WebSocket Debugger initialized successfully');
     } catch (error) {
