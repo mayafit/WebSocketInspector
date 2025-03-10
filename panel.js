@@ -6,6 +6,23 @@ function debugLog(message, data = null) {
 
 // Specific decoder for our TestMessage type
 const TestMessageDecoder = {
+    readVarint: function(view, offset) {
+        let result = 0;
+        let shift = 0;
+        let byte;
+
+        do {
+            if (offset >= view.byteLength) {
+                throw new Error('Malformed varint');
+            }
+            byte = view.getUint8(offset++);
+            result |= (byte & 0x7F) << shift;
+            shift += 7;
+        } while (byte & 0x80);
+
+        return [result, offset];
+    },
+
     decode: function(buffer) {
         if (!(buffer instanceof ArrayBuffer)) {
             throw new Error('Input must be an ArrayBuffer');
@@ -15,53 +32,76 @@ const TestMessageDecoder = {
         let offset = 0;
         const result = {};
 
-        while (offset < buffer.byteLength) {
-            const tag = view.getUint8(offset);
-            offset += 1;
-            const fieldNum = tag >> 3;
-            const wireType = tag & 0x7;
+        try {
+            while (offset < buffer.byteLength) {
+                const tag = view.getUint8(offset++);
+                const fieldNum = tag >> 3;
+                const wireType = tag & 0x7;
 
-            switch(fieldNum) {
-                case 1: // text field
-                    const textLength = view.getUint32(offset, true);
-                    offset += 4;
-                    const textBytes = new Uint8Array(buffer, offset, textLength);
-                    result.text = new TextDecoder().decode(textBytes);
-                    offset += textLength;
-                    break;
-                case 2: // number field
-                    result.number = view.getInt32(offset, true);
-                    offset += 4;
-                    break;
-                case 3: // flag field
-                    result.flag = Boolean(view.getUint8(offset));
-                    offset += 1;
-                    break;
-                case 4: // created_at field (timestamp)
-                    result.created_at = {
-                        seconds: view.getBigInt64(offset, true).toString(),
-                        nanos: view.getInt32(offset + 8, true)
-                    };
-                    offset += 12;
-                    break;
-                default:
-                    offset = this.skipField(buffer, offset, wireType);
+                switch(fieldNum) {
+                    case 1: // text field (string)
+                        const [textLength, newOffset] = this.readVarint(view, offset);
+                        offset = newOffset;
+                        if (offset + textLength > buffer.byteLength) {
+                            throw new Error('String length exceeds buffer bounds');
+                        }
+                        const textBytes = new Uint8Array(buffer, offset, textLength);
+                        result.text = new TextDecoder().decode(textBytes);
+                        offset += textLength;
+                        break;
+
+                    case 2: // number field (int32)
+                        const [value, numOffset] = this.readVarint(view, offset);
+                        result.number = value;
+                        offset = numOffset;
+                        break;
+
+                    case 3: // flag field (bool)
+                        result.flag = Boolean(view.getUint8(offset));
+                        offset += 1;
+                        break;
+
+                    case 4: // created_at field (timestamp message)
+                        // Skip message tag/length
+                        const [msgLength, msgOffset] = this.readVarint(view, offset);
+                        offset = msgOffset;
+
+                        // Read seconds (int64)
+                        const seconds = view.getBigInt64(offset, true);
+                        offset += 8;
+
+                        // Read nanos (int32)
+                        const nanos = view.getInt32(offset, true);
+                        offset += 4;
+
+                        result.created_at = {
+                            seconds: seconds.toString(),
+                            nanos: nanos
+                        };
+                        break;
+
+                    default:
+                        debugLog(`Skipping unknown field: ${fieldNum}`);
+                        offset = this.skipField(view, offset, wireType);
+                }
             }
+            return result;
+        } catch (error) {
+            debugLog('Decode error:', error);
+            throw new Error(`Failed to decode message: ${error.message}`);
         }
-        return result;
     },
 
-    skipField: function(buffer, offset, wireType) {
-        const view = new DataView(buffer);
+    skipField: function(view, offset, wireType) {
         switch(wireType) {
             case 0: // Varint
-                while (view.getUint8(offset) & 0x80) offset++;
-                return offset + 1;
+                const [_, newOffset] = this.readVarint(view, offset);
+                return newOffset;
             case 1: // 64-bit
                 return offset + 8;
             case 2: // Length-delimited
-                const length = view.getUint32(offset, true);
-                return offset + 4 + length;
+                const [length, lengthOffset] = this.readVarint(view, offset);
+                return lengthOffset + length;
             case 5: // 32-bit
                 return offset + 4;
             default:
