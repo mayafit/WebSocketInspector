@@ -3,24 +3,10 @@
 <head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="styles.css">
-    <!-- Load protobuf library first -->
-    <script src="lib/protobuf.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div id="errorDisplay" class="error-display" style="display: none;"></div>
-        <div class="proto-config">
-            <div class="proto-upload">
-                <input type="file" id="protoFile" accept=".proto" />
-                <button id="loadProto">Load Proto File</button>
-            </div>
-            <div class="message-type-selector">
-                <select id="messageTypeSelect" disabled>
-                    <option value="">Select Message Type</option>
-                </select>
-            </div>
-        </div>
-
         <div class="websocket-container">
             <div class="message-list">
                 <h3>WebSocket Messages</h3>
