@@ -53,8 +53,8 @@ class WebSocketDebugger {
         this.messageDetailContainer = document.getElementById('messageDetail');
 
         // Verify all required elements exist
-        if (!loadButton || !fileInput || !this.errorDisplay || 
-            !this.messageTypeSelect || !this.messageListContainer || 
+        if (!loadButton || !fileInput || !this.errorDisplay ||
+            !this.messageTypeSelect || !this.messageListContainer ||
             !this.messageDetailContainer) {
             const error = 'Required UI elements not found';
             debugLog('Error:', error);
@@ -209,44 +209,52 @@ class WebSocketDebugger {
 
     setupWebSocketListener() {
         debugLog('Setting up WebSocket listener');
+        alert('Debug: Setting up WebSocket listener'); // Debug popup
 
-        // Listen for network events
-        chrome.devtools.network.onRequestFinished.addListener(async (request) => {
-            if (request.request.url.startsWith('ws://') || request.request.url.startsWith('wss://')) {
-                debugLog('WebSocket connection detected:', { url: request.request.url });
+        const connectWebSocket = () => {
+            try {
+                debugLog('Attempting to connect to WebSocket server');
+                const ws = new WebSocket('ws://localhost:5000');
 
-                // Create a new WebSocket connection to monitor
-                const wsUrl = request.request.url;
-                if (!this.activeConnections.has(wsUrl)) {
-                    try {
-                        const ws = new WebSocket(wsUrl);
-                        this.activeConnections.set(wsUrl, ws);
+                ws.binaryType = 'arraybuffer'; // Ensure proper binary data handling
 
-                        ws.onopen = () => {
-                            debugLog('WebSocket connection established:', { url: wsUrl });
-                        };
+                ws.onopen = () => {
+                    debugLog('WebSocket connection established to test server');
+                    alert('Debug: WebSocket connected to test server'); // Debug popup
+                    this.showError(''); // Clear any previous error messages
+                };
 
-                        ws.onmessage = (event) => {
-                            debugLog('WebSocket message received');
-                            this.handleWebSocketMessage(event.data);
-                        };
+                ws.onmessage = async (event) => {
+                    debugLog('WebSocket message received');
+                    alert('Debug: Message received'); // Debug popup
+                    await this.handleWebSocketMessage(event.data);
+                };
 
-                        ws.onerror = (error) => {
-                            debugLog('WebSocket error:', { url: wsUrl, error });
-                            this.showError(`WebSocket error: ${error.message}`);
-                        };
+                ws.onerror = (error) => {
+                    debugLog('WebSocket error:', error);
+                    alert(`Debug: WebSocket error occurred`); // Debug popup
+                    this.showError(`WebSocket error: Failed to connect to server. Please ensure the test server is running.`);
+                };
 
-                        ws.onclose = () => {
-                            debugLog('WebSocket connection closed:', { url: wsUrl });
-                            this.activeConnections.delete(wsUrl);
-                        };
-                    } catch (error) {
-                        debugLog('Error creating WebSocket connection:', error);
-                        this.showError(`Failed to connect to WebSocket: ${error.message}`);
-                    }
-                }
+                ws.onclose = () => {
+                    debugLog('WebSocket connection closed');
+                    alert('Debug: WebSocket closed'); // Debug popup
+                    // Attempt to reconnect after a delay
+                    setTimeout(connectWebSocket, 2000);
+                };
+
+                this.activeConnections.set('test-server', ws);
+            } catch (error) {
+                debugLog('Error creating WebSocket connection:', error);
+                alert(`Debug: Connection error - ${error.message}`); // Debug popup
+                this.showError(`Failed to connect to WebSocket: ${error.message}`);
+                // Attempt to reconnect after a delay
+                setTimeout(connectWebSocket, 2000);
             }
-        });
+        };
+
+        // Start the connection
+        connectWebSocket();
 
         // Clear connections on navigation
         chrome.devtools.network.onNavigated.addListener(() => {
@@ -258,24 +266,40 @@ class WebSocketDebugger {
         });
     }
 
-    handleWebSocketMessage(data) {
+    async handleWebSocketMessage(data) {
         try {
+            debugLog('Handling WebSocket message');
             const message = {
                 timestamp: new Date().toISOString(),
-                rawData: this.parseMessageData(data),
+                rawData: data instanceof Blob ?
+                    new Uint8Array(await data.arrayBuffer()) :
+                    this.parseMessageData(data),
                 decoded: null
             };
 
+            if (this.protoRoot && this.selectedMessageType) {
+                try {
+                    const MessageType = this.protoRoot.lookupType(this.selectedMessageType);
+                    message.decoded = MessageType.decode(message.rawData).toJSON();
+                    debugLog('Message decoded successfully:', message.decoded);
+                } catch (error) {
+                    debugLog('Failed to decode message:', error);
+                }
+            }
+
             this.messages.push(message);
             this.updateMessageList();
-            debugLog('New message processed');
+            debugLog('Message processed and list updated');
         } catch (error) {
             debugLog('Error handling WebSocket message:', error);
+            this.showError(`Failed to process message: ${error.message}`);
         }
     }
 
     parseMessageData(data) {
-        if (typeof data === 'string') {
+        if (data instanceof ArrayBuffer) {
+            return new Uint8Array(data);
+        } else if (typeof data === 'string') {
             try {
                 // Try to parse as base64
                 const binary = atob(data);
@@ -285,36 +309,53 @@ class WebSocketDebugger {
                 }
                 return bytes;
             } catch (e) {
-                // If not base64, return as-is
+                // If not base64, return as string
                 return data;
             }
         }
-        return new Uint8Array(data);
+        return data;
     }
 
     updateMessageList() {
+        debugLog('Updating message list');
         this.messageListContainer.innerHTML = '';
+
         this.messages.forEach((message, index) => {
             const messageElement = document.createElement('div');
             messageElement.className = 'message-item';
-            messageElement.textContent = `Message ${index + 1} - ${message.timestamp}`;
-            messageElement.onclick = () => this.showMessageDetail(message);
+
+            const timestamp = new Date(message.timestamp).toLocaleTimeString();
+            let displayText = `Message ${index + 1} - ${timestamp}`;
+
+            if (message.decoded) {
+                displayText += ' (Decoded)';
+                messageElement.style.color = '#2196F3';
+            }
+
+            messageElement.textContent = displayText;
+            messageElement.onclick = () => {
+                debugLog('Message clicked:', { index });
+                this.showMessageDetail(message);
+            };
+
             this.messageListContainer.appendChild(messageElement);
         });
     }
 
-    async showMessageDetail(message) {
+    showMessageDetail(message) {
         try {
-            if (!this.protoRoot || !this.selectedMessageType) {
+            if (message.decoded) {
+                this.messageDetailContainer.innerHTML = `
+                    <h4>Decoded Message:</h4>
+                    <pre>${JSON.stringify(message.decoded, null, 2)}</pre>`;
+            } else if (!this.protoRoot || !this.selectedMessageType) {
                 this.messageDetailContainer.textContent = 'Please load a proto file and select a message type';
-                return;
+            } else {
+                this.messageDetailContainer.textContent = 'Failed to decode message with selected type';
             }
-
-            const decoded = await this.decodeProtobufMessage(message.rawData);
-            this.messageDetailContainer.innerHTML = `<pre>${JSON.stringify(decoded, null, 2)}</pre>`;
         } catch (error) {
             debugLog('Error showing message detail:', error);
-            this.messageDetailContainer.textContent = `Error decoding message: ${error.message}`;
+            this.messageDetailContainer.textContent = `Error: ${error.message}`;
         }
     }
 
