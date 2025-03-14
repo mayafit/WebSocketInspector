@@ -14,41 +14,99 @@ const wss = new WebSocket.Server({
 });
 
 // Load proto file
-async function loadProtoFile() {
+async function loadProtoDefinitions() {
     try {
         const root = await protobuf.load(path.join(__dirname, 'messages.proto'));
-        const TestMessage = root.lookupType('TestMessage');
-        return TestMessage;
+        return {
+            TestMessage: root.lookupType('TestMessage'),
+            EventInfo: root.lookupType('EventInfo'),
+            UserProfile: root.lookupType('UserProfile'),
+            Location: root.lookupType('Location'),
+            Timestamp: root.lookupType('Timestamp')
+        };
     } catch (error) {
         console.error('Error loading proto file:', error);
         process.exit(1);
     }
 }
 
+// Create a timestamp
+function createTimestamp() {
+    return {
+        seconds: Math.floor(Date.now() / 1000),
+        nanos: (Date.now() % 1000) * 1000000
+    };
+}
+
 // Send test messages periodically
-async function startMessageBroadcast(TestMessage) {
+async function startMessageBroadcast(types) {
     let counter = 0;
-    setInterval(() => {
-        const message = {
+
+    function createTestMessage() {
+        return {
             text: `Test message ${counter}`,
             number: counter,
             flag: counter % 2 === 0,
-            created_at: {
-                seconds: Math.floor(Date.now() / 1000),
-                nanos: (Date.now() % 1000) * 1000000
+            created_at: createTimestamp()
+        };
+    }
+
+    function createEventMessage() {
+        return {
+            name: `Event ${counter}`,
+            description: `Test event description ${counter}`,
+            start_time: createTimestamp(),
+            location: {
+                latitude: 37.7749 + (Math.random() - 0.5),
+                longitude: -122.4194 + (Math.random() - 0.5),
+                address: `${counter} Test St, San Francisco, CA`
             }
         };
+    }
+
+    function createUserMessage() {
+        return {
+            user_id: `user_${counter}`,
+            name: `Test User ${counter}`,
+            email: `user${counter}@test.com`,
+            roles: ['user', counter % 2 === 0 ? 'admin' : 'viewer'],
+            created_at: createTimestamp()
+        };
+    }
+
+    setInterval(() => {
+        let message, messageType, protoType;
+
+        // Rotate between different message types
+        switch(counter % 3) {
+            case 0:
+                message = createTestMessage();
+                messageType = 'TestMessage';
+                protoType = types.TestMessage;
+                break;
+            case 1:
+                message = createEventMessage();
+                messageType = 'EventInfo';
+                protoType = types.EventInfo;
+                break;
+            case 2:
+                message = createUserMessage();
+                messageType = 'UserProfile';
+                protoType = types.UserProfile;
+                break;
+        }
 
         // Verify the message
-        const errMsg = TestMessage.verify(message);
+        const errMsg = protoType.verify(message);
         if (errMsg) throw Error(errMsg);
 
         // Create and encode the message
-        const protoMessage = TestMessage.create(message);
-        const buffer = TestMessage.encode(protoMessage).finish();
+        const protoMessage = protoType.create(message);
+        const buffer = protoType.encode(protoMessage).finish();
 
         // Log the message being sent
         console.log('Sending message:', {
+            type: messageType,
             counter,
             bufferLength: buffer.length,
             messageContent: message
@@ -100,7 +158,7 @@ wss.on('error', (error) => {
 });
 
 // Start the server
-loadProtoFile().then(TestMessage => {
-    console.log('Proto file loaded, starting message broadcast');
-    startMessageBroadcast(TestMessage);
+loadProtoDefinitions().then(types => {
+    console.log('Proto definitions loaded, starting message broadcast');
+    startMessageBroadcast(types);
 }).catch(console.error);

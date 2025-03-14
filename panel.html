@@ -9,12 +9,16 @@
         <div id="errorDisplay" class="error-display" style="display: none;"></div>
         <div class="proto-config">
             <div class="proto-upload">
-                <input type="file" id="protoFile" accept=".proto" />
-                <button id="loadProto">Load Proto File</button>
+                <input type="file" id="protoFile" accept=".proto" multiple />
+                <button id="loadProto">Load Proto Files</button>
+            </div>
+            <div class="loaded-files">
+                <h4>Loaded Proto Files:</h4>
+                <ul id="loadedFilesList"></ul>
             </div>
             <div class="message-type-selector">
                 <select id="messageTypeSelect" disabled>
-                    <option value="TestMessage">TestMessage</option>
+                    <option value="">Select Message Type</option>
                 </select>
             </div>
         </div>

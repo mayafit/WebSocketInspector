@@ -23,10 +23,12 @@ cd websocket-proto-debugger
 npm install
 ```
 
-3. Load the extension in Chrome:
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode" in the top right
-   - Click "Load unpacked" and select the extension directory
+## Loading the Extension in Chrome
+
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable "Developer mode" in the top right
+3. Click "Load unpacked" and select the extension directory
+   - Make sure to select the root directory containing manifest.json
 
 ## Testing
 
@@ -47,6 +49,59 @@ node server.js
 3. Open Chrome DevTools and select the "WebSocket Proto" panel
    - You should see incoming messages being decoded and displayed
    - The test server sends a new message every 2 seconds
+
+## Packaging for Distribution
+
+### Creating a ZIP Package
+
+1. Ensure all required files are present:
+   ```
+   manifest.json
+   background.js
+   devtools.html
+   devtools.js
+   panel.html
+   panel.js
+   styles.css
+   ```
+
+2. Create a ZIP file containing these files:
+   - On macOS/Linux:
+     ```bash
+     zip -r websocket-proto-debugger.zip . -x "*.git*" -x "node_modules/*" -x "test/*" -x "*.zip"
+     ```
+   - On Windows:
+     - Right-click the files
+     - Select "Send to > Compressed (zipped) folder"
+     - Name it "websocket-proto-debugger.zip"
+
+### Creating a .crx File
+
+To create a .crx file for distribution:
+
+1. Pack the extension in Chrome:
+   - Go to `chrome://extensions/`
+   - Ensure "Developer mode" is enabled
+   - Click "Pack extension"
+   - In "Extension root directory", select your extension's folder
+   - Leave "Private key file" empty for first-time packaging
+   - Click "Pack Extension"
+
+2. Chrome will generate two files:
+   - `websocket-proto-debugger.crx`: The packaged extension
+   - `websocket-proto-debugger.pem`: The private key file
+
+3. Important notes:
+   - Keep the .pem file secure - you'll need it for future updates
+   - Don't include the .pem file in version control
+   - For future updates:
+     - Use the same .pem file in the "Private key file" field
+     - This ensures users can update smoothly
+
+The extension is now ready for:
+- Loading in Chrome via "Load unpacked" (using the unzipped directory)
+- Direct installation via the .crx file
+- Submission to the Chrome Web Store (using the ZIP file)
 
 ## Development
 
@@ -70,4 +125,3 @@ The extension uses the following technologies:
     ├── index.html      # Test page
     ├── messages.proto  # Protocol Buffer definition
     └── server.js       # Test WebSocket server
-```
