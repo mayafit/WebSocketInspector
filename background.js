@@ -13,8 +13,15 @@ function connectWebSocket() {
     }
 
     try {
-        console.log('Attempting to connect to WebSocket server at ws://127.0.0.1:5000');
-        ws = new WebSocket('ws://127.0.0.1:5000');
+        console.log('Attempting to connect to WebSocket server at ws://localhost:5000');
+        ws = new WebSocket('ws://localhost:5000', [], {
+            headers: {
+                'Upgrade': 'websocket',
+                'Connection': 'Upgrade',
+                'Sec-WebSocket-Version': '13',
+                'Origin': chrome.runtime.getURL('')
+            }
+        });
         ws.binaryType = 'arraybuffer';  // Set binary type to arraybuffer
 
         ws.onopen = () => {
