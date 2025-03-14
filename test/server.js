@@ -7,7 +7,11 @@ const wss = new WebSocket.Server({
     host: '127.0.0.1',
     port: 5000,
     verifyClient: ({ origin, req }, callback) => {
-        console.log('Connection attempt from origin:', origin);
+        console.log('Connection attempt:', {
+            origin,
+            headers: req.headers,
+            url: req.url
+        });
         // Accept connections from Chrome extension and localhost
         callback(true); // Accept all connections for testing
     }

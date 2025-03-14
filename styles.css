@@ -16,6 +16,47 @@
     font-weight: bold;
 }
 
+.server-config {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.server-config h4 {
+    margin: 0 0 12px 0;
+}
+
+.server-inputs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.server-inputs input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    flex: 1;
+}
+
+.server-inputs input[type="number"] {
+    width: 100px;
+    flex: 0 0 auto;
+}
+
+.channel-selector {
+    margin-top: 16px;
+}
+
+.channel-selector select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
 .proto-config {
     margin-bottom: 16px;
     padding: 8px;
@@ -70,40 +111,6 @@
     background-color: #f0f0f0;
 }
 
-pre {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    margin: 0;
-    font-family: monospace;
-}
-
-button {
-    padding: 8px 16px;
-    background: #2196F3;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #1976D2;
-}
-
-button:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-}
-
-input[type="file"] {
-    margin-right: 8px;
-}
-
-select:disabled {
-    background: #eee;
-    cursor: not-allowed;
-}
-
 .loaded-files {
     margin: 8px 0;
     padding: 8px;
@@ -132,4 +139,34 @@ select:disabled {
 
 .loaded-files li:last-child {
     border-bottom: none;
+}
+
+button {
+    padding: 8px 16px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1976D2;
+}
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+select:disabled {
+    background: #eee;
+    cursor: not-allowed;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+    font-family: monospace;
 }

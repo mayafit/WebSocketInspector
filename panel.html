@@ -7,6 +7,22 @@
 <body>
     <div class="container">
         <div id="errorDisplay" class="error-display" style="display: none;"></div>
+
+        <div class="server-config">
+            <h4>WebSocket Server Configuration</h4>
+            <div class="server-inputs">
+                <input type="text" id="serverHost" placeholder="Server Host (e.g., localhost)" value="localhost">
+                <input type="number" id="serverPort" placeholder="Port" value="5000">
+                <button id="connectServer">Connect</button>
+            </div>
+            <div class="channel-selector">
+                <h4>Available Channels</h4>
+                <select id="channelSelect" disabled>
+                    <option value="">No channels available</option>
+                </select>
+            </div>
+        </div>
+
         <div class="proto-config">
             <div class="proto-upload">
                 <input type="file" id="protoFile" accept=".proto" multiple />
@@ -36,7 +52,6 @@
         </div>
     </div>
 
-    <!-- Load panel.js -->
     <script src="panel.js"></script>
 </body>
 </html>

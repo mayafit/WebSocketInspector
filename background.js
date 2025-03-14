@@ -5,27 +5,25 @@ chrome.runtime.onInstalled.addListener(() => {
 // WebSocket connection management
 let ws = null;
 let activeConnections = new Set();
+let currentServer = null;
 
 // Connect to WebSocket server
-function connectWebSocket() {
+function connectWebSocket(host, port) {
     if (ws) {
         ws.close();
+        ws = null;
     }
 
     try {
-        console.log('Attempting to connect to WebSocket server at ws://localhost:5000');
-        ws = new WebSocket('ws://localhost:5000', [], {
-            headers: {
-                'Upgrade': 'websocket',
-                'Connection': 'Upgrade',
-                'Sec-WebSocket-Version': '13',
-                'Origin': chrome.runtime.getURL('')
-            }
-        });
-        ws.binaryType = 'arraybuffer';  // Set binary type to arraybuffer
+        const serverUrl = `ws://${host}:${port}`;
+        console.log('Attempting to connect to WebSocket server at', serverUrl);
+        
+        ws = new WebSocket(serverUrl);
+        ws.binaryType = 'arraybuffer';
+        currentServer = { host, port };
 
         ws.onopen = () => {
-            console.log('WebSocket connected to test server');
+            console.log('WebSocket connected to server');
             broadcastToDevTools({ type: 'WS_CONNECTED' });
         };
 
@@ -50,7 +48,7 @@ function connectWebSocket() {
             const uint8Array = new Uint8Array(event.data);
             broadcastToDevTools({ 
                 type: 'WS_MESSAGE', 
-                data: Array.from(uint8Array)  // Convert to regular array for serialization
+                data: Array.from(uint8Array)
             });
         };
 
@@ -69,8 +67,7 @@ function connectWebSocket() {
         ws.onclose = () => {
             console.log('WebSocket connection closed');
             broadcastToDevTools({ type: 'WS_CLOSED' });
-            // Attempt to reconnect after a delay
-            setTimeout(connectWebSocket, 2000);
+            currentServer = null;
         };
     } catch (error) {
         console.error('Error creating WebSocket connection:', error);
@@ -105,10 +102,29 @@ chrome.runtime.onConnect.addListener((port) => {
         console.log('DevTools panel connected');
         activeConnections.add(port);
 
-        // Start WebSocket connection if not already connected
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            connectWebSocket();
-        }
+        // Handle messages from the DevTools panel
+        port.onMessage.addListener((message) => {
+            switch (message.type) {
+                case 'CONNECT':
+                    connectWebSocket(message.host, message.port);
+                    break;
+
+                case 'GET_CHANNELS':
+                    // For now, simulate channel detection
+                    // In a real implementation, this would query the server
+                    broadcastToDevTools({
+                        type: 'WS_CHANNELS',
+                        channels: ['/ws', '/websocket', '/socket']
+                    });
+                    break;
+
+                case 'SUBSCRIBE':
+                    // Handle channel subscription
+                    console.log('Subscribing to channel:', message.channel);
+                    // Implement channel subscription logic here
+                    break;
+            }
+        });
 
         port.onDisconnect.addListener(() => {
             console.log('DevTools panel disconnected');
@@ -118,6 +134,7 @@ chrome.runtime.onConnect.addListener((port) => {
             if (activeConnections.size === 0 && ws) {
                 ws.close();
                 ws = null;
+                currentServer = null;
             }
         });
     }

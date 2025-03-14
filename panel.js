@@ -174,17 +174,20 @@ class WebSocketDebugger {
         this.port = null;
         this.protoRegistry = new ProtoRegistry();
         this.selectedMessageType = null;
+        this.channels = new Set();
 
         this.initializeUI();
-        this.connectToBackgroundScript();
+        // Don't connect automatically anymore
     }
 
     initializeUI() {
-        debugLog('Starting UI initialization');
-
         // Get UI elements
         const fileInput = document.getElementById('protoFile');
         const loadButton = document.getElementById('loadProto');
+        this.serverHostInput = document.getElementById('serverHost');
+        this.serverPortInput = document.getElementById('serverPort');
+        this.connectButton = document.getElementById('connectServer');
+        this.channelSelect = document.getElementById('channelSelect');
         this.errorDisplay = document.getElementById('errorDisplay');
         this.messageTypeSelect = document.getElementById('messageTypeSelect');
         this.messageListContainer = document.getElementById('messageList');
@@ -192,25 +195,40 @@ class WebSocketDebugger {
         this.loadedFilesList = document.getElementById('loadedFilesList');
 
         // Verify all required elements exist
-        if (!loadButton || !fileInput || !this.errorDisplay || !this.messageTypeSelect || 
-            !this.messageListContainer || !this.messageDetailContainer || !this.loadedFilesList) {
+        if (!this.verifyUIElements()) {
             throw new Error('Required UI elements not found');
         }
 
-        // File input change handler
+        // Server connection handler
+        this.connectButton.addEventListener('click', () => {
+            const host = this.serverHostInput.value.trim();
+            const port = this.serverPortInput.value;
+            if (host && port) {
+                this.connectToServer(host, port);
+            } else {
+                this.showError('Please enter valid host and port');
+            }
+        });
+
+        // Channel selection handler
+        this.channelSelect.addEventListener('change', (e) => {
+            const channel = e.target.value;
+            if (channel) {
+                this.subscribeToChannel(channel);
+            }
+        });
+
+        // File input handler
         fileInput.addEventListener('change', () => {
-            debugLog('File input changed');
             const files = fileInput.files;
             if (files.length > 0) {
-                debugLog('Files selected:', { count: files.length });
                 loadButton.disabled = false;
                 this.showError('');
             }
         });
 
-        // Load button click handler
+        // Load proto files handler
         loadButton.addEventListener('click', async () => {
-            debugLog('Load Proto button clicked');
             const files = fileInput.files;
             if (files.length > 0) {
                 try {
@@ -227,8 +245,100 @@ class WebSocketDebugger {
 
         // Message type selection handler
         this.messageTypeSelect.addEventListener('change', (e) => {
-            debugLog('Message type changed:', e.target.value);
             this.selectedMessageType = e.target.value;
+        });
+    }
+
+    verifyUIElements() {
+        return this.serverHostInput && this.serverPortInput && this.connectButton &&
+               this.channelSelect && this.errorDisplay && this.messageTypeSelect &&
+               this.messageListContainer && this.messageDetailContainer && this.loadedFilesList;
+    }
+
+    connectToServer(host, port) {
+        this.showError('');
+        this.channels.clear();
+        this.updateChannelSelect();
+
+        const serverUrl = `ws://${host}:${port}`;
+        debugLog('Connecting to server:', serverUrl);
+
+        this.port = chrome.runtime.connect({ name: "websocket-panel" });
+        this.port.onMessage.addListener((message) => {
+            switch(message.type) {
+                case 'WS_CONNECTED':
+                    debugLog('WebSocket connected');
+                    this.showError('');
+                    this.detectChannels();
+                    break;
+
+                case 'WS_MESSAGE':
+                    this.handleWebSocketMessage(message.data);
+                    break;
+
+                case 'WS_ERROR':
+                    debugLog('WebSocket error:', message.error);
+                    this.showError(message.error);
+                    break;
+
+                case 'WS_CLOSED':
+                    debugLog('WebSocket closed');
+                    this.showError('WebSocket connection closed');
+                    this.channelSelect.disabled = true;
+                    break;
+
+                case 'WS_CHANNELS':
+                    this.updateAvailableChannels(message.channels);
+                    break;
+            }
+        });
+
+        // Send connect request to background script
+        this.port.postMessage({
+            type: 'CONNECT',
+            host: host,
+            port: port
+        });
+    }
+
+    detectChannels() {
+        // Request available channels from the server
+        this.port.postMessage({ type: 'GET_CHANNELS' });
+    }
+
+    updateAvailableChannels(channels) {
+        this.channels = new Set(channels);
+        this.updateChannelSelect();
+    }
+
+    updateChannelSelect() {
+        this.channelSelect.innerHTML = '';
+        this.channelSelect.disabled = this.channels.size === 0;
+
+        if (this.channels.size === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No channels available';
+            this.channelSelect.appendChild(option);
+        } else {
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Select a channel';
+            this.channelSelect.appendChild(defaultOption);
+
+            this.channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel;
+                option.textContent = channel;
+                this.channelSelect.appendChild(option);
+            });
+        }
+    }
+
+    subscribeToChannel(channel) {
+        this.port.postMessage({
+            type: 'SUBSCRIBE',
+            channel: channel
         });
     }
 
@@ -249,37 +359,6 @@ class WebSocketDebugger {
         this.messageTypeSelect.disabled = false;
     }
 
-
-    connectToBackgroundScript() {
-        debugLog('Connecting to background script');
-        this.port = chrome.runtime.connect({ name: "websocket-panel" });
-
-        this.port.onMessage.addListener((message) => {
-            debugLog('Received message from background script:', message);
-
-            switch(message.type) {
-                case 'WS_CONNECTED':
-                    debugLog('WebSocket connected');
-                    this.showError('');
-                    break;
-
-                case 'WS_MESSAGE':
-                    debugLog('WebSocket message received');
-                    this.handleWebSocketMessage(message.data);
-                    break;
-
-                case 'WS_ERROR':
-                    debugLog('WebSocket error:', message.error);
-                    this.showError(message.error);
-                    break;
-
-                case 'WS_CLOSED':
-                    debugLog('WebSocket closed');
-                    this.showError('WebSocket connection closed. Attempting to reconnect...');
-                    break;
-            }
-        });
-    }
 
     showError(message) {
         debugLog('Error:', message);
