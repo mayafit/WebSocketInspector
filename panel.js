@@ -166,7 +166,60 @@ class ProtoRegistry {
     }
 }
 
-// Update the WebSocketDebugger class to use ProtoRegistry
+class MessageRecorder {
+    constructor() {
+        this.isRecording = false;
+        this.recordingPath = '';
+        this.filePattern = '';
+        this.splitMode = 'none';
+        this.splitValue = 0;
+        this.currentFile = null;
+        this.messageCount = 0;
+        this.startTime = null;
+        this.selectedMessages = new Set();
+    }
+
+    start(config) {
+        this.isRecording = true;
+        this.recordingPath = config.path;
+        this.filePattern = config.pattern;
+        this.splitMode = config.splitMode;
+        this.splitValue = config.splitValue;
+        this.messageCount = 0;
+        this.startTime = new Date();
+        this.selectedMessages.clear();
+
+        // Send start recording message to background script
+        chrome.runtime.sendMessage({
+            type: 'START_RECORDING',
+            config: {
+                path: this.recordingPath,
+                pattern: this.filePattern,
+                splitMode: this.splitMode,
+                splitValue: this.splitValue
+            }
+        });
+    }
+
+    stop() {
+        this.isRecording = false;
+        chrome.runtime.sendMessage({ type: 'STOP_RECORDING' });
+    }
+
+    toggleMessage(messageId, selected) {
+        if (selected) {
+            this.selectedMessages.add(messageId);
+        } else {
+            this.selectedMessages.delete(messageId);
+        }
+    }
+
+    shouldRecordMessage(messageId) {
+        return this.selectedMessages.has(messageId);
+    }
+}
+
+// Update WebSocketDebugger class
 class WebSocketDebugger {
     constructor() {
         debugLog('Initializing WebSocket Debugger');
@@ -175,6 +228,8 @@ class WebSocketDebugger {
         this.protoRegistry = new ProtoRegistry();
         this.selectedMessageType = null;
         this.channels = new Set();
+        this.recorder = new MessageRecorder();
+        this.messageId = 0;
 
         this.initializeUI();
         // Don't connect automatically anymore
@@ -193,6 +248,7 @@ class WebSocketDebugger {
         this.messageListContainer = document.getElementById('messageList');
         this.messageDetailContainer = document.getElementById('messageDetail');
         this.loadedFilesList = document.getElementById('loadedFilesList');
+
 
         // Verify all required elements exist
         if (!this.verifyUIElements()) {
@@ -246,6 +302,59 @@ class WebSocketDebugger {
         // Message type selection handler
         this.messageTypeSelect.addEventListener('change', (e) => {
             this.selectedMessageType = e.target.value;
+        });
+
+        // Add recording controls
+        this.recordingPath = document.getElementById('recordingPath');
+        this.filePattern = document.getElementById('filePattern');
+        this.splitMode = document.getElementById('splitMode');
+        this.splitValue = document.getElementById('splitValue');
+        this.startRecordingBtn = document.getElementById('startRecording');
+        this.stopRecordingBtn = document.getElementById('stopRecording');
+        this.selectAllBtn = document.getElementById('selectAll');
+        this.deselectAllBtn = document.getElementById('deselectAll');
+
+        // Recording controls event handlers
+        this.splitMode.addEventListener('change', (e) => {
+            this.splitValue.disabled = e.target.value === 'none';
+        });
+
+        this.startRecordingBtn.addEventListener('click', () => {
+            if (this.recordingPath.value) {
+                this.recorder.start({
+                    path: this.recordingPath.value,
+                    pattern: this.filePattern.value,
+                    splitMode: this.splitMode.value,
+                    splitValue: parseInt(this.splitValue.value)
+                });
+                this.startRecordingBtn.disabled = true;
+                this.stopRecordingBtn.disabled = false;
+                this.showError('');
+            } else {
+                this.showError('Please enter a recording path');
+            }
+        });
+
+        this.stopRecordingBtn.addEventListener('click', () => {
+            this.recorder.stop();
+            this.startRecordingBtn.disabled = false;
+            this.stopRecordingBtn.disabled = true;
+        });
+
+        this.selectAllBtn.addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('.message-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                this.recorder.toggleMessage(parseInt(cb.dataset.messageId), true);
+            });
+        });
+
+        this.deselectAllBtn.addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('.message-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+                this.recorder.toggleMessage(parseInt(cb.dataset.messageId), false);
+            });
         });
     }
 
@@ -398,6 +507,19 @@ class WebSocketDebugger {
                 }
             }
 
+            // Add recording logic
+            if (this.recorder.isRecording && this.recorder.shouldRecordMessage(this.messageId)) {
+                chrome.runtime.sendMessage({
+                    type: 'RECORD_MESSAGE',
+                    message: {
+                        id: this.messageId,
+                        timestamp: message.timestamp,
+                        data: message.decoded || Array.from(new Uint8Array(message.rawData))
+                    }
+                });
+            }
+
+            this.messageId++;
             this.messages.push(message);
             this.updateMessageList();
 
@@ -415,20 +537,28 @@ class WebSocketDebugger {
             const messageElement = document.createElement('div');
             messageElement.className = 'message-item';
 
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'message-checkbox';
+            checkbox.dataset.messageId = index;
+            checkbox.addEventListener('change', (e) => {
+                this.recorder.toggleMessage(index, e.target.checked);
+            });
+
             const timestamp = new Date(message.timestamp).toLocaleTimeString();
+            const textSpan = document.createElement('span');
             let displayText = `Message ${index + 1} - ${timestamp}`;
 
             if (message.decoded) {
                 displayText += ' (Decoded)';
-                messageElement.style.color = '#2196F3';
+                textSpan.style.color = '#2196F3';
             }
 
-            messageElement.textContent = displayText;
-            messageElement.onclick = () => {
-                debugLog('Message clicked:', { index });
-                this.showMessageDetail(message);
-            };
+            textSpan.textContent = displayText;
+            textSpan.onclick = () => this.showMessageDetail(message);
 
+            messageElement.appendChild(checkbox);
+            messageElement.appendChild(textSpan);
             this.messageListContainer.appendChild(messageElement);
         });
     }

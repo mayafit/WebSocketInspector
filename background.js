@@ -17,7 +17,7 @@ function connectWebSocket(host, port) {
     try {
         const serverUrl = `ws://${host}:${port}`;
         console.log('Attempting to connect to WebSocket server at', serverUrl);
-        
+
         ws = new WebSocket(serverUrl);
         ws.binaryType = 'arraybuffer';
         currentServer = { host, port };
@@ -37,17 +37,17 @@ function connectWebSocket(host, port) {
 
             if (!(event.data instanceof ArrayBuffer)) {
                 console.error('Unexpected data type:', typeof event.data);
-                broadcastToDevTools({ 
-                    type: 'WS_ERROR', 
-                    error: `Unexpected data type: ${typeof event.data}` 
+                broadcastToDevTools({
+                    type: 'WS_ERROR',
+                    error: `Unexpected data type: ${typeof event.data}`
                 });
                 return;
             }
 
             // Convert ArrayBuffer to Array for message passing
             const uint8Array = new Uint8Array(event.data);
-            broadcastToDevTools({ 
-                type: 'WS_MESSAGE', 
+            broadcastToDevTools({
+                type: 'WS_MESSAGE',
                 data: Array.from(uint8Array)
             });
         };
@@ -58,9 +58,9 @@ function connectWebSocket(host, port) {
                 readyState: ws.readyState,
                 url: ws.url
             });
-            broadcastToDevTools({ 
-                type: 'WS_ERROR', 
-                error: 'Failed to connect to WebSocket server' 
+            broadcastToDevTools({
+                type: 'WS_ERROR',
+                error: 'Failed to connect to WebSocket server'
             });
         };
 
@@ -71,9 +71,9 @@ function connectWebSocket(host, port) {
         };
     } catch (error) {
         console.error('Error creating WebSocket connection:', error);
-        broadcastToDevTools({ 
-            type: 'WS_ERROR', 
-            error: `Connection error: ${error.message}` 
+        broadcastToDevTools({
+            type: 'WS_ERROR',
+            error: `Connection error: ${error.message}`
         });
     }
 }
@@ -137,5 +137,57 @@ chrome.runtime.onConnect.addListener((port) => {
                 currentServer = null;
             }
         });
+    }
+});
+
+// Add recording state management
+let recordingConfig = null;
+let recordingStream = null;
+
+// Add recording message handlers
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    switch (message.type) {
+        case 'START_RECORDING':
+            recordingConfig = message.config;
+            console.log('Started recording with config:', recordingConfig);
+            break;
+
+        case 'STOP_RECORDING':
+            recordingConfig = null;
+            if (recordingStream) {
+                recordingStream.end();
+                recordingStream = null;
+            }
+            console.log('Stopped recording');
+            break;
+
+        case 'RECORD_MESSAGE':
+            if (recordingConfig) {
+                const timestamp = new Date().toISOString();
+                const fileName = recordingConfig.pattern
+                    .replace('%timestamp%', timestamp.replace(/[:.]/g, '-'));
+
+                const data = {
+                    timestamp,
+                    ...message.message
+                };
+
+                // Use chrome.downloads API to save the file
+                const blob = new Blob([JSON.stringify(data, null, 2)],
+                    { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+
+                chrome.downloads.download({
+                    url: url,
+                    filename: `${recordingConfig.path}/${fileName}.json`,
+                    saveAs: false
+                }, (downloadId) => {
+                    URL.revokeObjectURL(url);
+                    if (chrome.runtime.lastError) {
+                        console.error('Error saving recording:', chrome.runtime.lastError);
+                    }
+                });
+            }
+            break;
     }
 });

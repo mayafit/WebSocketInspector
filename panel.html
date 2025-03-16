@@ -23,6 +23,25 @@
             </div>
         </div>
 
+        <div class="recording-config">
+            <h4>Recording Configuration</h4>
+            <div class="recording-inputs">
+                <input type="text" id="recordingPath" placeholder="Recording folder path">
+                <input type="text" id="filePattern" placeholder="File pattern (e.g., ws_log_%timestamp%)" value="ws_log_%timestamp%">
+                <select id="splitMode">
+                    <option value="none">Single file</option>
+                    <option value="count">Split by message count</option>
+                    <option value="size">Split by file size</option>
+                    <option value="time">Split by time interval</option>
+                </select>
+                <input type="number" id="splitValue" placeholder="Split value" disabled>
+                <div class="recording-controls">
+                    <button id="startRecording" disabled>Start Recording</button>
+                    <button id="stopRecording" disabled>Stop Recording</button>
+                </div>
+            </div>
+        </div>
+
         <div class="proto-config">
             <div class="proto-upload">
                 <input type="file" id="protoFile" accept=".proto" multiple />
@@ -42,6 +61,10 @@
         <div class="websocket-container">
             <div class="message-list">
                 <h3>WebSocket Messages</h3>
+                <div class="message-actions">
+                    <button id="selectAll">Select All</button>
+                    <button id="deselectAll">Deselect All</button>
+                </div>
                 <div id="messageList"></div>
             </div>
 
