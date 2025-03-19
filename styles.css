@@ -4,6 +4,42 @@
     height: 100vh;
     padding: 16px;
     box-sizing: border-box;
+    gap: 16px;
+}
+
+.tab-container {
+    flex: 0 0 auto;
+}
+
+.tab-buttons {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.tab-button {
+    padding: 8px 16px;
+    background: #e0e0e0;
+    color: #333;
+    border: none;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+}
+
+.tab-button.active {
+    background: #2196F3;
+    color: white;
+}
+
+.tab-content {
+    display: none;
+    padding: 16px;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.tab-content.active {
+    display: block;
 }
 
 .error-display {
@@ -84,6 +120,7 @@
     flex: 1;
     gap: 16px;
     min-height: 0;
+    height: 60vh;
 }
 
 .message-list {

@@ -232,6 +232,7 @@ class WebSocketDebugger {
         this.messageId = 0;
 
         this.initializeUI();
+        this.initializeTabs();
         // Don't connect automatically anymore
     }
 
@@ -362,6 +363,25 @@ class WebSocketDebugger {
         return this.serverHostInput && this.serverPortInput && this.connectButton &&
                this.channelSelect && this.errorDisplay && this.messageTypeSelect &&
                this.messageListContainer && this.messageDetailContainer && this.loadedFilesList;
+    }
+
+    initializeTabs() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.dataset.tab;
+                
+                // Update active button
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update active content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
     }
 
     connectToServer(host, port) {

@@ -7,8 +7,16 @@
 <body>
     <div class="container">
         <div id="errorDisplay" class="error-display" style="display: none;"></div>
-
-        <div class="server-config">
+        
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="server">Server</button>
+                <button class="tab-button" data-tab="recording">Recording</button>
+                <button class="tab-button" data-tab="proto">Proto</button>
+            </div>
+            
+            <div class="tab-content active" id="server-tab">
+                <div class="server-config">
             <h4>WebSocket Server Configuration</h4>
             <div class="server-inputs">
                 <input type="text" id="serverHost" placeholder="Server Host (e.g., localhost)" value="localhost">
@@ -22,8 +30,10 @@
                 </select>
             </div>
         </div>
-
-        <div class="recording-config">
+            </div>
+            
+            <div class="tab-content" id="recording-tab">
+                <div class="recording-config">
             <h4>Recording Configuration</h4>
             <div class="recording-inputs">
                 <input type="text" id="recordingPath" placeholder="Recording folder path">
@@ -41,8 +51,10 @@
                 </div>
             </div>
         </div>
-
-        <div class="proto-config">
+            </div>
+            
+            <div class="tab-content" id="proto-tab">
+                <div class="proto-config">
             <div class="proto-upload">
                 <input type="file" id="protoFile" accept=".proto" multiple />
                 <button id="loadProto">Load Proto Files</button>
@@ -55,6 +67,8 @@
                 <select id="messageTypeSelect" disabled>
                     <option value="">Select Message Type</option>
                 </select>
+            </div>
+        </div>
             </div>
         </div>
 
