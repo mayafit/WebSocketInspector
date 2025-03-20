@@ -320,14 +320,18 @@ class WebSocketDebugger {
             const filePicker = document.createElement('input');
             filePicker.type = 'file';
             filePicker.webkitdirectory = true;
-            filePicker.directory = true;
+            filePicker.style.display = 'none';
+            document.body.appendChild(filePicker);
 
             filePicker.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    const directory = e.target.files[0].webkitRelativePath.split('/')[0];
+                    const file = e.target.files[0];
+                    const pathParts = file.webkitRelativePath.split('/');
+                    const directory = pathParts[0];
                     this.recordingPath.value = directory;
                     this.startRecordingBtn.disabled = false;
                 }
+                document.body.removeChild(filePicker);
             });
 
             filePicker.click();
