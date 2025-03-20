@@ -578,7 +578,7 @@ class WebSocketDebugger {
             let displayText = `Message ${index + 1} - ${timestamp}`;
 
             if (message.decoded) {
-                displayText += ' (Decoded)';
+                displayText += ` (${message.type})`;
                 textSpan.style.color = '#2196F3';
             }
 
