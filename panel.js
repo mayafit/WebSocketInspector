@@ -240,7 +240,7 @@ class WebSocketDebugger {
     initializeUI() {
         // Get UI elements
         const fileInput = document.getElementById('protoFile');
-        const loadButton = document.getElementById('loadProto');
+        this.loadedFiles = new Set();
         this.serverHostInput = document.getElementById('serverHost');
         this.serverPortInput = document.getElementById('serverPort');
         this.connectButton = document.getElementById('connectServer');
@@ -276,25 +276,20 @@ class WebSocketDebugger {
             }
         });
 
-        // File input handler
-        fileInput.addEventListener('change', () => {
-            const files = fileInput.files;
-            if (files.length > 0) {
-                loadButton.disabled = false;
-                this.showError('');
-            }
-        });
-
-        // Load proto files handler
-        loadButton.addEventListener('click', async () => {
+        // File input handler with automatic loading
+        fileInput.addEventListener('change', async () => {
             const files = fileInput.files;
             if (files.length > 0) {
                 try {
                     for (const file of files) {
-                        const result = await this.protoRegistry.loadProtoFile(file);
-                        this.updateLoadedFilesList(result);
+                        if (!this.loadedFiles.has(file.name)) {
+                            const result = await this.protoRegistry.loadProtoFile(file);
+                            this.loadedFiles.add(file.name);
+                            this.updateLoadedFilesList(result);
+                        }
                     }
                     this.updateMessageTypeSelect();
+                    this.showError('');
                 } catch (error) {
                     this.showError(`Failed to load proto files: ${error.message}`);
                 }
