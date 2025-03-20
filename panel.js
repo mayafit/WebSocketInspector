@@ -513,18 +513,26 @@ class WebSocketDebugger {
                 timestamp: new Date().toISOString(),
                 rawData: buffer,
                 decoded: null,
-                type: this.selectedMessageType
+                type: null
             };
 
-            if (this.selectedMessageType) {
+            // Try each registered message type until we find one that successfully decodes
+            for (const [typeName, type] of this.protoRegistry.messageTypes) {
                 try {
-                    const decoder = this.protoRegistry.getDecoderForType(this.selectedMessageType);
-                    message.decoded = decoder.decode(buffer);
-                    debugLog('Message decoded successfully:', message.decoded);
+                    const decoder = this.protoRegistry.getDecoderForType(typeName);
+                    const decodedData = decoder.decode(buffer);
+                    message.decoded = decodedData;
+                    message.type = typeName;
+                    debugLog('Message decoded successfully as', typeName, decodedData);
+                    break;
                 } catch (error) {
-                    debugLog('Failed to decode message:', error);
-                    this.showError(`Failed to decode message: ${error.message}`);
+                    // Continue to next type if decoding fails
+                    continue;
                 }
+            }
+
+            if (!message.decoded) {
+                debugLog('Failed to decode message with any known type');
             }
 
             // Add recording logic
