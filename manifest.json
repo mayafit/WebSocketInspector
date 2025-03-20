@@ -6,7 +6,8 @@
   "permissions": [
     "debugger",
     "webRequest",
-    "tabs"
+    "tabs",
+    "downloads"
   ],
   "host_permissions": [
     "ws://localhost:*/*",
