@@ -46,6 +46,36 @@ function createTimestamp() {
 async function startMessageBroadcast(types) {
     let counter = 0;
 
+    function createAnyContainer() {
+        let innerMessage;
+        let type;
+        
+        // Rotate between different message types to pack into Any
+        switch(counter % 3) {
+            case 0:
+                innerMessage = createTestMessage();
+                type = types.TestMessage;
+                break;
+            case 1:
+                innerMessage = createEventMessage();
+                type = types.EventInfo;
+                break;
+            case 2:
+                innerMessage = createUserMessage();
+                type = types.UserProfile;
+                break;
+        }
+
+        return {
+            container_id: `container_${counter}`,
+            content: {
+                type_url: `type.googleapis.com/${type.fullName}`,
+                value: type.encode(type.create(innerMessage)).finish()
+            },
+            created_at: createTimestamp()
+        };
+    }
+
     function createTestMessage() {
         return {
             text: `Test message ${counter}`,
@@ -82,11 +112,16 @@ async function startMessageBroadcast(types) {
         let message, messageType, protoType;
 
         // Rotate between different message types
-        switch(counter % 3) {
+        switch(counter % 4) {
             case 0:
                 message = createTestMessage();
                 messageType = 'TestMessage';
                 protoType = types.TestMessage;
+                break;
+            case 3:
+                message = createAnyContainer();
+                messageType = 'AnyContainer';
+                protoType = types.AnyContainer;
                 break;
             case 1:
                 message = createEventMessage();

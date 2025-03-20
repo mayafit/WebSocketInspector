@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/any.proto";
+
 // Common types
 message Timestamp {
     int64 seconds = 1;
@@ -35,4 +37,10 @@ message TestMessage {
     int32 number = 2;
     bool flag = 3;
     Timestamp created_at = 4;
+}
+
+message AnyContainer {
+    string container_id = 1;
+    google.protobuf.Any content = 2;
+    Timestamp created_at = 3;
 }
