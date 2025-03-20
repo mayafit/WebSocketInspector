@@ -26,7 +26,8 @@ async function loadProtoDefinitions() {
             EventInfo: root.lookupType('EventInfo'),
             UserProfile: root.lookupType('UserProfile'),
             Location: root.lookupType('Location'),
-            Timestamp: root.lookupType('Timestamp')
+            Timestamp: root.lookupType('Timestamp'),
+            AnyContainer: root.lookupType('AnyContainer')
         };
     } catch (error) {
         console.error('Error loading proto file:', error);
@@ -49,7 +50,7 @@ async function startMessageBroadcast(types) {
     function createAnyContainer() {
         let innerMessage;
         let type;
-        
+
         // Rotate between different message types to pack into Any
         switch(counter % 3) {
             case 0:
@@ -135,30 +136,40 @@ async function startMessageBroadcast(types) {
                 break;
         }
 
-        // Verify the message
-        const errMsg = protoType.verify(message);
-        if (errMsg) throw Error(errMsg);
+        try {
+            // Verify the message
+            const errMsg = protoType.verify(message);
+            if (errMsg) throw Error(errMsg);
 
-        // Create and encode the message
-        const protoMessage = protoType.create(message);
-        const buffer = protoType.encode(protoMessage).finish();
+            // Create and encode the message
+            const protoMessage = protoType.create(message);
+            const buffer = protoType.encode(protoMessage).finish();
 
-        // Log the message being sent
-        console.log('Sending message:', {
-            type: messageType,
-            counter,
-            bufferLength: buffer.length,
-            messageContent: message
-        });
+            // Add a fake header to test offset feature (2 bytes header)
+            const headerBuffer = Buffer.from([0xAB, 0xCD]);
+            const messageWithHeader = Buffer.concat([headerBuffer, buffer]);
 
-        // Broadcast to all clients
-        wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(buffer);
-            }
-        });
+            // Log the message being sent
+            console.log('Sending message:', {
+                type: messageType,
+                counter,
+                totalLength: messageWithHeader.length,
+                headerLength: headerBuffer.length,
+                protoLength: buffer.length,
+                messageContent: message
+            });
 
-        counter++;
+            // Broadcast to all clients
+            wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(messageWithHeader);
+                }
+            });
+
+            counter++;
+        } catch (error) {
+            console.error('Error creating/sending message:', error);
+        }
     }, 2000); // Send a message every 2 seconds
 }
 

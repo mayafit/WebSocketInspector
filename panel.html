@@ -7,70 +7,75 @@
 <body>
     <div class="container">
         <div id="errorDisplay" class="error-display" style="display: none;"></div>
-        
+
         <div class="tab-container">
             <div class="tab-buttons">
                 <button class="tab-button active" data-tab="server">Server</button>
                 <button class="tab-button" data-tab="recording">Recording</button>
                 <button class="tab-button" data-tab="proto">Proto</button>
             </div>
-            
+
             <div class="tab-content active" id="server-tab">
                 <div class="server-config">
-            <h4>WebSocket Server Configuration</h4>
-            <div class="server-inputs">
-                <input type="text" id="serverHost" placeholder="Server Host (e.g., localhost)" value="localhost">
-                <input type="number" id="serverPort" placeholder="Port" value="5000">
-                <button id="connectServer">Connect</button>
+                    <h4>WebSocket Server Configuration</h4>
+                    <div class="server-inputs">
+                        <input type="text" id="serverHost" placeholder="Server Host (e.g., localhost)" value="localhost">
+                        <input type="number" id="serverPort" placeholder="Port" value="5000">
+                        <button id="connectServer">Connect</button>
+                    </div>
+                    <div class="proto-offset">
+                        <label for="protoOffset">Proto Message Offset (bytes):</label>
+                        <input type="number" id="protoOffset" placeholder="0" value="0" min="0">
+                        <div class="help-text">Number of bytes to skip before the Protocol Buffer message starts</div>
+                    </div>
+                    <div class="channel-selector">
+                        <h4>Available Channels</h4>
+                        <select id="channelSelect" disabled>
+                            <option value="">No channels available</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-            <div class="channel-selector">
-                <h4>Available Channels</h4>
-                <select id="channelSelect" disabled>
-                    <option value="">No channels available</option>
-                </select>
-            </div>
-        </div>
-            </div>
-            
+
             <div class="tab-content" id="recording-tab">
                 <div class="recording-config">
-            <h4>Recording Configuration</h4>
-            <div class="recording-inputs">
-                <div class="directory-input">
-                    <input type="text" id="recordingPath" placeholder="Recording folder path" readonly>
-                    <button id="selectDirectory">Choose Directory</button>
-                </div>
-                <input type="text" id="filePattern" placeholder="File pattern (e.g., ws_log_%timestamp%)" value="ws_log_%timestamp%">
-                <select id="splitMode">
-                    <option value="none">Single file</option>
-                    <option value="count">Split by message count</option>
-                    <option value="size">Split by file size</option>
-                    <option value="time">Split by time interval</option>
-                </select>
-                <input type="number" id="splitValue" placeholder="Split value" disabled>
-                <div class="recording-controls">
-                    <button id="startRecording" disabled>Start Recording</button>
-                    <button id="stopRecording" disabled>Stop Recording</button>
+                    <h4>Recording Configuration</h4>
+                    <div class="recording-inputs">
+                        <div class="directory-input">
+                            <input type="text" id="recordingPath" placeholder="Recording folder path" readonly>
+                            <button id="selectDirectory">Choose Directory</button>
+                        </div>
+                        <input type="text" id="filePattern" placeholder="File pattern (e.g., ws_log_%timestamp%)" value="ws_log_%timestamp%">
+                        <select id="splitMode">
+                            <option value="none">Single file</option>
+                            <option value="count">Split by message count</option>
+                            <option value="size">Split by file size</option>
+                            <option value="time">Split by time interval</option>
+                        </select>
+                        <input type="number" id="splitValue" placeholder="Split value" disabled>
+                        <div class="recording-controls">
+                            <button id="startRecording" disabled>Start Recording</button>
+                            <button id="stopRecording" disabled>Stop Recording</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-            </div>
-            
+
             <div class="tab-content" id="proto-tab">
                 <div class="proto-config">
-            <div class="proto-upload">
-                <input type="file" id="protoFile" accept=".proto" multiple />
-            </div>
-            <div class="loaded-files">
-                <h4>Loaded Proto Files:</h4>
-                <ul id="loadedFilesList"></ul>
-            </div>
-            <div class="message-type-selector">
-                <select id="messageTypeSelect" disabled>
-                    <option value="">Select Message Type</option>
-                </select>
-            </div>
-        </div>
+                    <div class="proto-upload">
+                        <input type="file" id="protoFile" accept=".proto" multiple />
+                    </div>
+                    <div class="loaded-files">
+                        <h4>Loaded Proto Files:</h4>
+                        <ul id="loadedFilesList"></ul>
+                    </div>
+                    <div class="message-type-selector">
+                        <select id="messageTypeSelect" disabled>
+                            <option value="">Select Message Type</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 

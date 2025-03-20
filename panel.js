@@ -219,7 +219,6 @@ class MessageRecorder {
     }
 }
 
-// Update WebSocketDebugger class
 class WebSocketDebugger {
     constructor() {
         debugLog('Initializing WebSocket Debugger');
@@ -232,6 +231,7 @@ class WebSocketDebugger {
         this.messageId = 0;
         this.autoscroll = true;
         this.selectedMessageIndex = null;
+        this.protoOffset = 0;
 
         this.initializeUI();
         this.initializeTabs();
@@ -244,6 +244,7 @@ class WebSocketDebugger {
         this.loadedFiles = new Set();
         this.serverHostInput = document.getElementById('serverHost');
         this.serverPortInput = document.getElementById('serverPort');
+        this.protoOffsetInput = document.getElementById('protoOffset');
         this.connectButton = document.getElementById('connectServer');
         this.channelSelect = document.getElementById('channelSelect');
         this.errorDisplay = document.getElementById('errorDisplay');
@@ -252,11 +253,17 @@ class WebSocketDebugger {
         this.messageDetailContainer = document.getElementById('messageDetail');
         this.loadedFilesList = document.getElementById('loadedFilesList');
 
-
-        // Verify all required elements exist
-        if (!this.verifyUIElements()) {
-            throw new Error('Required UI elements not found');
-        }
+        // Add proto offset change handler
+        this.protoOffsetInput.addEventListener('change', (e) => {
+            const offset = parseInt(e.target.value);
+            if (!isNaN(offset) && offset >= 0) {
+                this.protoOffset = offset;
+                debugLog('Proto offset updated:', this.protoOffset);
+            } else {
+                e.target.value = this.protoOffset;
+                this.showError('Proto offset must be a non-negative number');
+            }
+        });
 
         // Server connection handler
         this.connectButton.addEventListener('click', () => {
@@ -314,7 +321,7 @@ class WebSocketDebugger {
             filePicker.type = 'file';
             filePicker.webkitdirectory = true;
             filePicker.directory = true;
-            
+
             filePicker.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
                     const directory = e.target.files[0].webkitRelativePath.split('/')[0];
@@ -322,7 +329,7 @@ class WebSocketDebugger {
                     this.startRecordingBtn.disabled = false;
                 }
             });
-            
+
             filePicker.click();
         });
         this.splitValue = document.getElementById('splitValue');
@@ -385,7 +392,7 @@ class WebSocketDebugger {
     verifyUIElements() {
         return this.serverHostInput && this.serverPortInput && this.connectButton &&
                this.channelSelect && this.errorDisplay && this.messageTypeSelect &&
-               this.messageListContainer && this.messageDetailContainer && this.loadedFilesList;
+               this.messageListContainer && this.messageDetailContainer && this.loadedFilesList && this.protoOffsetInput;
     }
 
     initializeTabs() {
@@ -393,11 +400,11 @@ class WebSocketDebugger {
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const tabName = button.dataset.tab;
-                
+
                 // Update active button
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
-                
+
                 // Update active content
                 document.querySelectorAll('.tab-content').forEach(content => {
                     content.classList.remove('active');
@@ -526,15 +533,18 @@ class WebSocketDebugger {
                 throw new Error(`Invalid message format: expected Array, got ${typeof data}`);
             }
 
-            const buffer = new ArrayBuffer(data.length);
+            // Apply proto offset when creating the buffer
+            const messageData = data.slice(this.protoOffset);
+            const buffer = new ArrayBuffer(messageData.length);
             const view = new Uint8Array(buffer);
-            data.forEach((value, index) => {
+            messageData.forEach((value, index) => {
                 view[index] = value;
             });
 
             const message = {
                 timestamp: new Date().toISOString(),
                 rawData: buffer,
+                fullData: data, // Store the complete message including header
                 decoded: null,
                 type: null
             };
@@ -565,7 +575,8 @@ class WebSocketDebugger {
                     message: {
                         id: this.messageId,
                         timestamp: message.timestamp,
-                        data: message.decoded || Array.from(new Uint8Array(message.rawData))
+                        data: message.decoded || Array.from(new Uint8Array(message.rawData)),
+                        fullData: Array.from(data) // Include the complete message in recording
                     }
                 });
             }
@@ -578,6 +589,48 @@ class WebSocketDebugger {
             debugLog('Error handling WebSocket message:', error);
             this.showError(`Failed to process message: ${error.message}`);
         }
+    }
+
+    showMessageDetail(message) {
+        try {
+            if (message.decoded) {
+                const rawBytes = Array.from(new Uint8Array(message.rawData));
+                const fullBytes = Array.from(new Uint8Array(message.fullData));
+
+                // Show header bytes if offset > 0
+                let headerDisplay = '';
+                if (this.protoOffset > 0) {
+                    const headerBytes = fullBytes.slice(0, this.protoOffset);
+                    headerDisplay = `<h4>Message Header (${this.protoOffset} bytes):</h4>
+<pre>${this.formatBytes(headerBytes)}</pre>`;
+                }
+
+                const rawDataRows = this.formatBytes(rawBytes);
+
+                this.messageDetailContainer.innerHTML = `
+                    ${headerDisplay}
+                    <h4>Decoded Message:</h4>
+                    <pre>${JSON.stringify(message.decoded, null, 2)}</pre>
+                    <h4>Proto Message Raw Data:</h4>
+                    <pre>${rawDataRows}</pre>`;
+            } else {
+                this.messageDetailContainer.textContent = 'Failed to decode message';
+            }
+        } catch (error) {
+            debugLog('Error showing message detail:', error);
+            this.messageDetailContainer.textContent = `Error: ${error.message}`;
+        }
+    }
+
+    formatBytes(bytes) {
+        const rows = [];
+        for (let i = 0; i < bytes.length; i += 16) {
+            const chunk = bytes.slice(i, i + 16);
+            const hex = chunk.map(b => b.toString(16).padStart(2, '0')).join(' ');
+            const ascii = chunk.map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('');
+            rows.push(`${i.toString(16).padStart(8, '0')}: ${hex.padEnd(48, ' ')} | ${ascii}`);
+        }
+        return rows.join('\n');
     }
 
     updateMessageList() {
@@ -619,32 +672,6 @@ class WebSocketDebugger {
 
         if (this.autoscroll) {
             this.messageListContainer.scrollTop = this.messageListContainer.scrollHeight;
-        }
-    }
-
-    showMessageDetail(message) {
-        try {
-            if (message.decoded) {
-                const rawBytes = Array.from(new Uint8Array(message.rawData));
-                const rawDataRows = [];
-                for (let i = 0; i < rawBytes.length; i += 16) {
-                    const chunk = rawBytes.slice(i, i + 16);
-                    const hex = chunk.map(b => b.toString(16).padStart(2, '0')).join(' ');
-                    const ascii = chunk.map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('');
-                    rawDataRows.push(`${i.toString(16).padStart(8, '0')}: ${hex.padEnd(48, ' ')} | ${ascii}`);
-                }
-
-                this.messageDetailContainer.innerHTML = `
-                    <h4>Decoded Message:</h4>
-                    <pre>${JSON.stringify(message.decoded, null, 2)}</pre>
-                    <h4>Raw Data:</h4>
-                    <pre>${rawDataRows.join('\n')}</pre>`;
-            } else {
-                this.messageDetailContainer.textContent = 'Failed to decode message';
-            }
-        } catch (error) {
-            debugLog('Error showing message detail:', error);
-            this.messageDetailContainer.textContent = `Error: ${error.message}`;
         }
     }
 }
