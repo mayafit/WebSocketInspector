@@ -310,11 +310,20 @@ class WebSocketDebugger {
 
         // Directory selection handler
         this.selectDirectoryBtn.addEventListener('click', () => {
-            // Use Chrome's downloads API to let user select a directory
-            chrome.downloads.showDefaultFolder();
-            // Set default downloads directory path
-            this.recordingPath.value = "Downloads";
-            this.startRecordingBtn.disabled = false;
+            const filePicker = document.createElement('input');
+            filePicker.type = 'file';
+            filePicker.webkitdirectory = true;
+            filePicker.directory = true;
+            
+            filePicker.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    const directory = e.target.files[0].webkitRelativePath.split('/')[0];
+                    this.recordingPath.value = directory;
+                    this.startRecordingBtn.disabled = false;
+                }
+            });
+            
+            filePicker.click();
         });
         this.splitValue = document.getElementById('splitValue');
         this.startRecordingBtn = document.getElementById('startRecording');
