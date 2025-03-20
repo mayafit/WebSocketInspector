@@ -231,6 +231,7 @@ class WebSocketDebugger {
         this.recorder = new MessageRecorder();
         this.messageId = 0;
         this.autoscroll = true;
+        this.selectedMessageIndex = null;
 
         this.initializeUI();
         this.initializeTabs();
@@ -566,7 +567,7 @@ class WebSocketDebugger {
 
         this.messages.forEach((message, index) => {
             const messageElement = document.createElement('div');
-            messageElement.className = 'message-item';
+            messageElement.className = `message-item${index === this.selectedMessageIndex ? ' selected' : ''}`;
 
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -586,7 +587,11 @@ class WebSocketDebugger {
             }
 
             textSpan.textContent = displayText;
-            textSpan.onclick = () => this.showMessageDetail(message);
+            textSpan.onclick = () => {
+                this.selectedMessageIndex = index;
+                this.showMessageDetail(message);
+                this.updateMessageList();
+            };
 
             messageElement.appendChild(checkbox);
             messageElement.appendChild(textSpan);

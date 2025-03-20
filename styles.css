@@ -149,11 +149,26 @@
     padding: 8px;
     cursor: pointer;
     border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
 }
 
 .message-item:hover {
     background-color: #f0f0f0;
 }
+
+.message-item.selected {
+    background-color: #e3f2fd;
+}
+
+.message-item.selected:hover {
+    background-color: #bbdefb;
+}
+
+.message-item input[type="checkbox"] {
+    margin-right: 8px;
+}
+
 
 .loaded-files {
     margin: 8px 0;
@@ -258,20 +273,4 @@ pre {
     display: flex;
     gap: 8px;
     margin-bottom: 8px;
-}
-
-.message-item {
-    display: flex;
-    align-items: center;
-    padding: 8px;
-    cursor: pointer;
-    border-bottom: 1px solid #eee;
-}
-
-.message-item:hover {
-    background-color: #f0f0f0;
-}
-
-.message-item input[type="checkbox"] {
-    margin-right: 8px;
 }
