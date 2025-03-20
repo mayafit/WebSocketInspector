@@ -586,11 +586,20 @@ class WebSocketDebugger {
     showMessageDetail(message) {
         try {
             if (message.decoded) {
+                const rawBytes = Array.from(new Uint8Array(message.rawData));
+                const rawDataRows = [];
+                for (let i = 0; i < rawBytes.length; i += 16) {
+                    const chunk = rawBytes.slice(i, i + 16);
+                    const hex = chunk.map(b => b.toString(16).padStart(2, '0')).join(' ');
+                    const ascii = chunk.map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join('');
+                    rawDataRows.push(`${i.toString(16).padStart(8, '0')}: ${hex.padEnd(48, ' ')} | ${ascii}`);
+                }
+
                 this.messageDetailContainer.innerHTML = `
                     <h4>Decoded Message:</h4>
                     <pre>${JSON.stringify(message.decoded, null, 2)}</pre>
                     <h4>Raw Data:</h4>
-                    <pre>${JSON.stringify(Array.from(new Uint8Array(message.rawData)), null, 2)}</pre>`;
+                    <pre>${rawDataRows.join('\n')}</pre>`;
             } else {
                 this.messageDetailContainer.textContent = 'Failed to decode message';
             }
