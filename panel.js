@@ -304,8 +304,22 @@ class WebSocketDebugger {
 
         // Add recording controls
         this.recordingPath = document.getElementById('recordingPath');
+        this.selectDirectoryBtn = document.getElementById('selectDirectory');
         this.filePattern = document.getElementById('filePattern');
         this.splitMode = document.getElementById('splitMode');
+
+        // Directory selection handler
+        this.selectDirectoryBtn.addEventListener('click', async () => {
+            try {
+                const directoryHandle = await window.showDirectoryPicker();
+                this.recordingPath.value = directoryHandle.name;
+                // Store the handle for later use when saving files
+                this.directoryHandle = directoryHandle;
+                this.startRecordingBtn.disabled = !this.recordingPath.value;
+            } catch (error) {
+                this.showError('Failed to select directory: ' + error.message);
+            }
+        });
         this.splitValue = document.getElementById('splitValue');
         this.startRecordingBtn = document.getElementById('startRecording');
         this.stopRecordingBtn = document.getElementById('stopRecording');

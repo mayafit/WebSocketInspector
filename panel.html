@@ -36,7 +36,10 @@
                 <div class="recording-config">
             <h4>Recording Configuration</h4>
             <div class="recording-inputs">
-                <input type="text" id="recordingPath" placeholder="Recording folder path">
+                <div class="directory-input">
+                    <input type="text" id="recordingPath" placeholder="Recording folder path" readonly>
+                    <button id="selectDirectory">Choose Directory</button>
+                </div>
                 <input type="text" id="filePattern" placeholder="File pattern (e.g., ws_log_%timestamp%)" value="ws_log_%timestamp%">
                 <select id="splitMode">
                     <option value="none">Single file</option>

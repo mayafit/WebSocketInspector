@@ -259,6 +259,20 @@ pre {
     border-radius: 4px;
 }
 
+.directory-input {
+    display: flex;
+    gap: 8px;
+}
+
+.directory-input input {
+    flex: 1;
+}
+
+.directory-input button {
+    padding: 8px 16px;
+    white-space: nowrap;
+}
+
 .recording-controls {
     display: flex;
     gap: 8px;
