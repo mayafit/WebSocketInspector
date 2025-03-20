@@ -230,6 +230,7 @@ class WebSocketDebugger {
         this.channels = new Set();
         this.recorder = new MessageRecorder();
         this.messageId = 0;
+        this.autoscroll = true;
 
         this.initializeUI();
         this.initializeTabs();
@@ -314,6 +315,13 @@ class WebSocketDebugger {
         this.stopRecordingBtn = document.getElementById('stopRecording');
         this.selectAllBtn = document.getElementById('selectAll');
         this.deselectAllBtn = document.getElementById('deselectAll');
+        this.autoscrollBtn = document.getElementById('toggleAutoscroll');
+
+        // Autoscroll button handler
+        this.autoscrollBtn.addEventListener('click', () => {
+            this.autoscroll = !this.autoscroll;
+            this.autoscrollBtn.classList.toggle('active');
+        });
 
         // Recording controls event handlers
         this.splitMode.addEventListener('change', (e) => {
@@ -589,6 +597,10 @@ class WebSocketDebugger {
             messageElement.appendChild(textSpan);
             this.messageListContainer.appendChild(messageElement);
         });
+
+        if (this.autoscroll) {
+            this.messageListContainer.scrollTop = this.messageListContainer.scrollHeight;
+        }
     }
 
     showMessageDetail(message) {

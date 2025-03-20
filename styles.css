@@ -203,6 +203,10 @@ button:disabled {
     cursor: not-allowed;
 }
 
+button.active {
+    background: #4CAF50;
+}
+
 select:disabled {
     background: #eee;
     cursor: not-allowed;
